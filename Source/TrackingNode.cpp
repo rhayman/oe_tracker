@@ -30,39 +30,90 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace std;
 
-void TrackingNodeSettings::addModule(String name, TrackingNode *node)
+std::ostream &operator<<(std::ostream &stream, const TrackingModule &module)
 {
+    stream << "Name: " << module.m_name.toStdString() << std::endl;
+    stream << "Address: " << module.m_address.toStdString() << std::endl;
+    stream << "Port: " << module.m_port.toStdString() << std::endl;
+    stream << "Colour: " << module.m_color.toStdString() << std::endl;
+    return stream;
 }
 
-void TrackingNodeSettings::updateModules(String name)
+void TrackingModule::createMetaValues()
 {
+    MetadataDescriptor desc_name = MetadataDescriptor(
+        MetadataDescriptor::MetadataType::CHAR,
+        64,
+        "Source name",
+        "Tracking source name",
+        "external.tracking.name");
+    meta_name = MetadataValue(desc_name);
+
+    MetadataDescriptor desc_port = MetadataDescriptor(
+        MetadataDescriptor::MetadataType::CHAR,
+        16,
+        "Source port",
+        "Tracking source port",
+        "external.tracking.port");
+    meta_port = MetadataValue(desc_port);
+
+    MetadataDescriptor desc_address = MetadataDescriptor(
+        MetadataDescriptor::MetadataType::CHAR,
+        16,
+        "Source address",
+        "Tracking source address",
+        "external.tracking.address");
+    meta_address = MetadataValue(desc_address);
+
+    MetadataDescriptor desc_color = MetadataDescriptor(
+        MetadataDescriptor::MetadataType::CHAR,
+        16,
+        "Source color",
+        "Tracking source color",
+        "external.tracking.color");
+    meta_color = MetadataValue(desc_color);
+
+    MetadataDescriptor desc_position = MetadataDescriptor(
+        MetadataDescriptor::MetadataType::FLOAT,
+        4,
+        "Source position",
+        "Tracking  position",
+        "external.tracking.position");
+    meta_position = MetadataValue(desc_position);
 }
 
-TTLEventPtr TrackingNodeSettings::createEvent(int64 sample_number, bool state){
-    // auto message = m_messageQueue->pop();
-    // // attach metadata to the TTL Event as BinaryEvents aren't dealt with (yet?)
-    // // in GenericProcessor::checkForEvents()
-    // auto name = MetadataValue(MetadataDescriptor::CHAR, 64);
-    // name.setValue(m_source_name);
-    // auto port = MetadataValue(MetadataDescriptor::CHAR, 16);
-    // port.setValue(m_port);
-    // auto address = MetadataValue(MetadataDescriptor::CHAR, 16);
-    // address.setValue(m_address);
-    // auto color = MetadataValue(MetadataDescriptor::CHAR, 16);
-    // color.setValue(m_color);
-    // m_metadata.clear();
-    // m_metadata.add(name);
-    // m_metadata.add(port);
-    // m_metadata.add(address);
-    // m_metadata.add(color);
+TTLEventPtr TrackingModule::createEvent(int64 sample_number, EventChannel *chan)
+{
+    auto *message = m_messageQueue->pop();
+    if (!message)
+        return nullptr;
+    // attach metadata to the TTL Event as BinaryEvents aren't dealt with (yet?)
+    // in GenericProcessor::checkForEvents()
+    meta_name.setValue(m_name);
+    meta_port.setValue(m_port);
+    meta_address.setValue(m_address);
+    meta_color.setValue(m_color);
+    Array<float> pos;
+    pos.add(message->position.x);
+    pos.add(message->position.y);
+    pos.add(message->position.height);
+    pos.add(message->position.width);
+    meta_position.setValue(pos);
 
-    // TTLEventPtr event = TTLEvent::createTTLEvent(eventChannel,
-    //                                              message->timestamp,
-    //                                              16,
-    //                                              true,
-    //                                              m_metadata);
+    m_metadata.clear();
+    m_metadata.add(meta_name);
+    m_metadata.add(meta_port);
+    m_metadata.add(meta_address);
+    m_metadata.add(meta_color);
+    m_metadata.add(meta_position);
 
-    // return event;
+    TTLEventPtr event = TTLEvent::createTTLEvent(chan,
+                                                 message->timestamp,
+                                                 16,
+                                                 true,
+                                                 m_metadata);
+
+    return event;
 };
 
 TrackingNode::TrackingNode()
@@ -126,15 +177,16 @@ void TrackingNode::addModule(uint16 streamID, String moduleName)
     if (!sourceNames.contains(moduleName))
     {
         // make sure the UDP port is unique
-        // int unique_port = -1;
-        // std::vector<int> ports;
-        // for (const auto &tm : trackingModules)
-        // {
-        //     ports.push_back(std::stoi(tm->m_port.toStdString()));
-        // }
-        // auto maxPort = *std::max_element(ports.begin(), ports.end());
-        // auto newPort = maxPort++; //String(newPort),
-        trackingModules.add(new TrackingModule(moduleName, this));
+        int port = DEF_PORT;
+        if (!trackingModules.isEmpty())
+        {
+            std::vector<int> ports;
+            for (const auto &tm : trackingModules)
+                ports.push_back(std::stoi(tm->m_port.toStdString()));
+            auto maxPort = *std::max_element(ports.begin(), ports.end());
+            port = maxPort + 1;
+        }
+        trackingModules.add(new TrackingModule(moduleName, String(port), this));
         sourceNames.add(moduleName);
     }
 }
@@ -176,6 +228,7 @@ void TrackingNode::updateSettings()
                              dataStreams.getLast()};
 
     events = new EventChannel(s);
+    eventChannel = events;
     String id = "trackingsource";
     events->setIdentifier(id);
     events->addProcessor(processorInfo.get());
@@ -197,13 +250,13 @@ void TrackingNode::process(AudioBuffer<float> &buffer)
     {
         if ((*stream)["enable_stream"])
         {
-            TrackingNodeSettings *module = settings[stream->getStreamId()];
-            const uint16 streamId = stream->getStreamId();
-            const int64 firstSampleInBlock = getFirstSampleNumberForBlock(streamId);
-            const uint32 numSamplesInBlock = getNumSamplesInBlock(streamId);
-
-            TTLEventPtr ptr = module->createEvent(firstSampleInBlock, true);
-            addEvent(ptr, firstSampleInBlock);
+            for (auto &module : trackingModules)
+            {
+                const uint16 streamId = stream->getStreamId();
+                const int64 firstSampleInBlock = getFirstSampleNumberForBlock(streamId);
+                TTLEventPtr ptr = module->createEvent(firstSampleInBlock, eventChannel);
+                addEvent(ptr, firstSampleInBlock);
+            }
         }
     }
     lock.exit();

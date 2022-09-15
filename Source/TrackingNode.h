@@ -151,16 +151,27 @@ public:
 			delete m_server;
 		}
 	}
+	TTLEventPtr createEvent(int64 sample_number, EventChannel *chan);
 	bool alreadyExists(const String &name)
 	{
 		return m_name == name;
 	};
+	friend std::ostream &operator<<(std::ostream &stream, const TrackingModule &module);
+	void createMetaValues();
 	String m_name;
 	String m_port = "27020";
 	String m_address = "/red";
 	String m_color = "red";
+	// Metadata for attaching to TTL events
+	MetadataValue meta_port;
+	MetadataValue meta_name;
+	MetadataValue meta_address;
+	MetadataValue meta_color;
+	MetadataValue meta_position;
+
 	TrackingQueue *m_messageQueue = nullptr;
 	TrackingServer *m_server = nullptr;
+	MetadataValueArray m_metadata;
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackingModule);
 };
 
@@ -169,9 +180,8 @@ class TrackingNodeSettings
 private:
 public:
 	TrackingNodeSettings(){};
-	TTLEventPtr createEvent(int64 sample_number, bool state);
 	void addModule(String name, TrackingNode *node);
-	void updateModules(String);
+	void updateModule(String name, Parameter *param);
 	EventChannel *eventChannel;
 };
 
@@ -191,6 +201,7 @@ private:
 	int lastNumInputs;
 
 	StreamSettings<TrackingNodeSettings> settings;
+	EventChannel *eventChannel;
 
 	OwnedArray<TrackingModule> trackingModules;
 	StringArray sourceNames;
@@ -239,7 +250,7 @@ public:
 
 	// TODO: CLEAN THIS
 	void receiveMessage(int port, String address, const TrackingData &message);
-	int getTrackingModuleIndex(String name, int port, String address);
+	int getTrackingModuleIndex(String name, int port, String address) { return 1; };
 	void addSource(int port, String address, String color, uint16 currentStream);
 	void addSource(uint16 currentStream);
 	void removeSource(String name);
