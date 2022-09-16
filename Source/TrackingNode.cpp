@@ -30,7 +30,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace std;
 
-std::ostream &operator<<(std::ostream &stream, const TrackingModule &module)
+void TrackingNodeSettings::updateModule(String name, Parameter *param)
+{
+}
+
+std::ostream &
+operator<<(std::ostream &stream, const TrackingModule &module)
 {
     stream << "Name: " << module.m_name.toStdString() << std::endl;
     stream << "Address: " << module.m_address.toStdString() << std::endl;
@@ -47,7 +52,7 @@ void TrackingModule::createMetaValues()
         "Source name",
         "Tracking source name",
         "external.tracking.name");
-    meta_name = MetadataValue(desc_name);
+    meta_name = new MetadataValue(desc_name);
 
     MetadataDescriptor desc_port = MetadataDescriptor(
         MetadataDescriptor::MetadataType::CHAR,
@@ -55,7 +60,7 @@ void TrackingModule::createMetaValues()
         "Source port",
         "Tracking source port",
         "external.tracking.port");
-    meta_port = MetadataValue(desc_port);
+    meta_port = new MetadataValue(desc_port);
 
     MetadataDescriptor desc_address = MetadataDescriptor(
         MetadataDescriptor::MetadataType::CHAR,
@@ -63,7 +68,7 @@ void TrackingModule::createMetaValues()
         "Source address",
         "Tracking source address",
         "external.tracking.address");
-    meta_address = MetadataValue(desc_address);
+    meta_address = new MetadataValue(desc_address);
 
     MetadataDescriptor desc_color = MetadataDescriptor(
         MetadataDescriptor::MetadataType::CHAR,
@@ -71,7 +76,7 @@ void TrackingModule::createMetaValues()
         "Source color",
         "Tracking source color",
         "external.tracking.color");
-    meta_color = MetadataValue(desc_color);
+    meta_color = new MetadataValue(desc_color);
 
     MetadataDescriptor desc_position = MetadataDescriptor(
         MetadataDescriptor::MetadataType::FLOAT,
@@ -79,7 +84,7 @@ void TrackingModule::createMetaValues()
         "Source position",
         "Tracking  position",
         "external.tracking.position");
-    meta_position = MetadataValue(desc_position);
+    meta_position = new MetadataValue(desc_position);
 }
 
 TTLEventPtr TrackingModule::createEvent(int64 sample_number, EventChannel *chan)
@@ -89,16 +94,16 @@ TTLEventPtr TrackingModule::createEvent(int64 sample_number, EventChannel *chan)
         return nullptr;
     // attach metadata to the TTL Event as BinaryEvents aren't dealt with (yet?)
     // in GenericProcessor::checkForEvents()
-    meta_name.setValue(m_name);
-    meta_port.setValue(m_port);
-    meta_address.setValue(m_address);
-    meta_color.setValue(m_color);
+    meta_name->setValue(m_name);
+    meta_port->setValue(m_port);
+    meta_address->setValue(m_address);
+    meta_color->setValue(m_color);
     Array<float> pos;
     pos.add(message->position.x);
     pos.add(message->position.y);
     pos.add(message->position.height);
     pos.add(message->position.width);
-    meta_position.setValue(pos);
+    meta_position->setValue(pos);
 
     m_metadata.clear();
     m_metadata.add(meta_name);
@@ -138,38 +143,23 @@ AudioProcessorEditor *TrackingNode::createEditor()
     return editor.get();
 }
 
+int getTrackingModuleIndex(String name, int port, String address)
+{
+
+    return 1;
+}
+
+const String TrackingNode::getSelectedSourceName()
+{
+    auto src_param = getParameter("Source");
+    CategoricalParameter *cparam = (CategoricalParameter *)src_param;
+    return cparam->getSelectedString();
+}
+
 void TrackingNode::parameterValueChanged(Parameter *param)
 {
-    if (param->getName().equalsIgnoreCase("Source"))
-    {
-        std::cout << "------------HERE--------------" << std::endl;
-        CategoricalParameter *cparam = (CategoricalParameter *)param;
-        auto src_name = cparam->getSelectedString();
-        auto id = param->getStreamId();
-        // settings[param->getStreamId()]->addModule(src_name, this);
-    }
-    else if (param->getName().equalsIgnoreCase("Address"))
-    {
-        //     LOGC("[open-ephys - oe_tracking] - Got address change");
-        auto str = param->getValueAsString();
-        //     LOGC("address now: ", str);
-        //     auto orig_addr = settings[param->getStreamId()]->m_address;
-        //     LOGC("orig address ", orig_addr);
-        //     settings[param->getStreamId()]->m_address = param->getValueAsString();
-    }
-    else if (param->getName().equalsIgnoreCase("Port"))
-    {
-        auto val = param->getValueAsString();
-        std::cout << "port now = " << val << std::endl;
-        // settings[param->getStreamId()]->m_port = param->getValueAsString();
-    }
-    else if (param->getName().equalsIgnoreCase("color"))
-    {
-        CategoricalParameter *cparam = (CategoricalParameter *)param;
-        auto val = cparam->getValueAsString();
-        std::cout << "stream id = " << param->getStreamId() << std::endl;
-        // settings[param->getStreamId()]->m_color = val;
-    }
+    auto src_name = getSelectedSourceName();
+    updateModule(param->getStreamId(), src_name, param);
 }
 
 void TrackingNode::addModule(uint16 streamID, String moduleName)
@@ -191,6 +181,45 @@ void TrackingNode::addModule(uint16 streamID, String moduleName)
     }
 }
 
+void TrackingNode::updateModule(uint16 streamID, String name, Parameter *param)
+{
+    if (sourceNames.contains(name))
+    {
+        for (auto &tm : trackingModules)
+        {
+            if (tm->m_name == name)
+            {
+                if (param->getName().equalsIgnoreCase("color"))
+                {
+                    CategoricalParameter *cparam = (CategoricalParameter *)param;
+                    auto new_color = cparam->getSelectedString();
+                    tm->m_color = new_color;
+                    std::cout << *tm << std::endl;
+                }
+                else if (param->getName().equalsIgnoreCase("port"))
+                {
+                    auto new_port = param->getValueAsString();
+                    tm->m_port = new_port;
+                    std::cout << *tm << std::endl;
+                }
+                else if (param->getName().equalsIgnoreCase("address"))
+                {
+                    auto new_address = param->getValueAsString();
+                    tm->m_address = new_address;
+                    std::cout << *tm << std::endl;
+                }
+                else if (param->getName().equalsIgnoreCase("address"))
+                {
+                    auto src_name = getSelectedSourceName();
+                    auto *port = getParameter("Port");
+                    // port->newValue =
+                    auto *editor = getEditor();
+                }
+            }
+        }
+    }
+}
+
 void TrackingNode::removeModule(uint16 streamID, String moduleName)
 {
     if (sourceNames.contains(moduleName))
@@ -203,6 +232,15 @@ void TrackingNode::removeModule(uint16 streamID, String moduleName)
                 sourceNames.removeString(moduleName);
             }
         }
+    }
+}
+
+TrackingModule *TrackingNode::getModule(const String &name)
+{
+    TrackingModule *tm = nullptr;
+    for (auto &thismodule trackingModules)
+    {
+        if
     }
 }
 
@@ -271,13 +309,7 @@ void TrackingNode::handleTTLEvent(TTLEventPtr event)
 
 int TrackingNode::getNSources()
 {
-    int nStreams = 0;
-    for (auto stream : getDataStreams())
-    {
-        if ((*stream)["enable_stream"])
-            ++nStreams;
-    }
-    return nStreams;
+    return trackingModules.size();
 }
 
 void TrackingNode::receiveMessage(int port, String address, const TrackingData &message)

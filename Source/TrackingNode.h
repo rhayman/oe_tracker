@@ -111,27 +111,32 @@ private:
 class TrackingModule
 {
 public:
+	TrackingModule() { createMetaValues(); }
 	TrackingModule(String name, TrackingNode *processor)
 		: m_name(name), m_messageQueue(new TrackingQueue()), m_server(new TrackingServer(m_port, m_address))
 	{
+		createMetaValues();
 		m_server->addProcessor(processor);
 		m_server->startThread();
 	}
 	TrackingModule(String name, String port, TrackingNode *processor)
 		: m_name(name), m_port(port), m_messageQueue(new TrackingQueue()), m_server(new TrackingServer(port, m_address))
 	{
+		createMetaValues();
 		m_server->addProcessor(processor);
 		m_server->startThread();
 	}
 	TrackingModule(String name, String port, String address, String color, TrackingNode *processor)
 		: m_name(name), m_port(port), m_address(address), m_color(color), m_messageQueue(new TrackingQueue()), m_server(new TrackingServer(port, address))
 	{
+		createMetaValues();
 		m_server->addProcessor(processor);
 		m_server->startThread();
 	}
 	TrackingModule(TrackingNode *processor)
 		: m_name(""), m_port(""), m_address(""), m_color(""), m_messageQueue(new TrackingQueue()), m_server(new TrackingServer())
 	{
+		createMetaValues();
 	}
 	~TrackingModule()
 	{
@@ -150,6 +155,16 @@ public:
 			cout << "Delete server" << endl;
 			delete m_server;
 		}
+		if (meta_port)
+			delete meta_port;
+		if (meta_color)
+			delete meta_color;
+		if (meta_address)
+			delete meta_address;
+		if (meta_position)
+			delete meta_position;
+		if (meta_name)
+			delete meta_name;
 	}
 	TTLEventPtr createEvent(int64 sample_number, EventChannel *chan);
 	bool alreadyExists(const String &name)
@@ -163,11 +178,11 @@ public:
 	String m_address = "/red";
 	String m_color = "red";
 	// Metadata for attaching to TTL events
-	MetadataValue meta_port;
-	MetadataValue meta_name;
-	MetadataValue meta_address;
-	MetadataValue meta_color;
-	MetadataValue meta_position;
+	MetadataValue *meta_port;
+	MetadataValue *meta_name;
+	MetadataValue *meta_address;
+	MetadataValue *meta_color;
+	MetadataValue *meta_position;
 
 	TrackingQueue *m_messageQueue = nullptr;
 	TrackingServer *m_server = nullptr;
@@ -220,9 +235,15 @@ public:
 
 	void addModule(uint16 streamID, String moduleName);
 
+	void updateModule(uint16 streamID, String moduleName, Parameter *param);
+
 	void removeModule(uint16 streamID, String moduleName);
 
+	TrackingModule *getModule(const String &name);
+
 	void parameterValueChanged(Parameter *param);
+
+	const String getSelectedSourceName();
 
 	/** Called every time the settings of an upstream plugin are changed.
 		Allows the processor to handle variations in the channel configuration or any other parameter
@@ -250,7 +271,7 @@ public:
 
 	// TODO: CLEAN THIS
 	void receiveMessage(int port, String address, const TrackingData &message);
-	int getTrackingModuleIndex(String name, int port, String address) { return 1; };
+	int getTrackingModuleIndex(String name, int port, String address);
 	void addSource(int port, String address, String color, uint16 currentStream);
 	void addSource(uint16 currentStream);
 	void removeSource(String name);

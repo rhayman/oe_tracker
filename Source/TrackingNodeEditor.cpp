@@ -63,6 +63,10 @@ void TrackingNodeEditor::buttonClicked(Button *btn)
         cparam->setCategories(newSources);
         processor->addModule(param->getStreamId(), txt);
         updateView();
+        for (auto &pe : parameterEditors)
+        {
+            std::cout << "pe name: " << pe->getParameterName() << std::endl;
+        }
     }
     if (btn == minusButton.get())
     {
@@ -75,5 +79,14 @@ void TrackingNodeEditor::buttonClicked(Button *btn)
         cparam->setCategories(oldSources);
         processor->removeModule(param->getStreamId(), str);
         updateView();
+    }
+}
+
+void TrackingNodeEditor::updateCustomView()
+{
+    CategoricalParameter *src_param = (CategoricalParameter *)getProcessor()->getParameter("Source");
+    auto src_name = src_param->getSelectedString();
+    for (auto ed : parameterEditors)
+    {
     }
 }
