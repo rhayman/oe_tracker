@@ -194,26 +194,29 @@ void TrackingNode::updateModule(uint16 streamID, String name, Parameter *param)
                     CategoricalParameter *cparam = (CategoricalParameter *)param;
                     auto new_color = cparam->getSelectedString();
                     tm->m_color = new_color;
-                    std::cout << *tm << std::endl;
                 }
                 else if (param->getName().equalsIgnoreCase("port"))
                 {
                     auto new_port = param->getValueAsString();
                     tm->m_port = new_port;
-                    std::cout << *tm << std::endl;
                 }
                 else if (param->getName().equalsIgnoreCase("address"))
                 {
                     auto new_address = param->getValueAsString();
                     tm->m_address = new_address;
-                    std::cout << *tm << std::endl;
                 }
-                else if (param->getName().equalsIgnoreCase("address"))
+                else if (param->getName().equalsIgnoreCase("source"))
                 {
-                    auto src_name = getSelectedSourceName();
+                    CategoricalParameter *cparam = (CategoricalParameter *)param;
+                    auto src_name = cparam->getSelectedString();
                     auto *port = getParameter("Port");
-                    // port->newValue =
-                    auto *editor = getEditor();
+                    auto *address = getParameter("Address");
+                    auto *col = getParameter("Color");
+                    CategoricalParameter *color = (CategoricalParameter *)getParameter("Color");
+                    port->currentValue = tm->m_port;
+                    address->currentValue = tm->m_address;
+                    auto idx = colors.indexOf(tm->m_color);
+                    color->setNextValue(idx);
                 }
             }
         }
@@ -238,10 +241,12 @@ void TrackingNode::removeModule(uint16 streamID, String moduleName)
 TrackingModule *TrackingNode::getModule(const String &name)
 {
     TrackingModule *tm = nullptr;
-    for (auto &thismodule trackingModules)
+    for (auto &thismodule : trackingModules)
     {
-        if
+        if (thismodule->m_name == name)
+            tm = thismodule;
     }
+    return tm;
 }
 
 void TrackingNode::updateSettings()
