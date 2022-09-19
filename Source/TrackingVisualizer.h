@@ -36,8 +36,6 @@
 #include "TrackingVisualizerEditor.h"
 #include "TrackingMessage.h"
 
-#include <vector>
-
 #define MAX_SOURCES 10
 
 /**
@@ -55,7 +53,10 @@ public:
     AudioProcessorEditor *createEditor();
 
     void process(AudioSampleBuffer &buffer) override;
+    // change this to handleTTLEvent as this is what is raised now in TrackingNode
+    //
     void handleEvent(const EventChannel *eventInfo, const MidiMessage &event, int);
+    void handleTTLEvent(TTLEventPtr) override;
     void updateSettings();
 
     float getX(int s) const;

@@ -35,13 +35,8 @@
 #include <algorithm>
 
 TrackingVisualizer::TrackingVisualizer()
-    : GenericProcessor("Tracking Visual")
-    , m_positionIsUpdated(false)
-    , m_clearTracking(false)
-    , m_isRecording(false)
-    , m_colorUpdated(false)
+    : GenericProcessor("Tracking Visual"), m_positionIsUpdated(false), m_clearTracking(false), m_isRecording(false), m_colorUpdated(false)
 {
-    setProcessorType (PROCESSOR_TYPE_SINK);
 }
 
 TrackingVisualizer::~TrackingVisualizer()
@@ -50,8 +45,8 @@ TrackingVisualizer::~TrackingVisualizer()
 
 AudioProcessorEditor *TrackingVisualizer::createEditor()
 {
-    editor = new TrackingVisualizerEditor(this, true);
-    return editor;
+    editor = std::make_unique<TrackingVisualizerEditor>(this, true);
+    return editor.get();
 }
 
 void TrackingVisualizer::updateSettings()
@@ -61,18 +56,18 @@ void TrackingVisualizer::updateSettings()
     int nEvents = getTotalEventChannels();
     for (int i = 0; i < nEvents; i++)
     {
-        const EventChannel* event = getEventChannel(i);
+        const EventChannel *event = getEventChannel(i);
         if (event->getName().compare("Tracking data") == 0)
         {
             s.eventIndex = event->getSourceIndex();
-            s.sourceId =  event->getSourceNodeID();
-            s.name = "Tracking source " + String(event->getSourceIndex()+1);
+            s.sourceId = event->getSourceNodeID();
+            s.name = "Tracking source " + String(event->getSourceIndex() + 1);
             s.color = "None";
             s.x_pos = -1;
             s.y_pos = -1;
             s.width = -1;
             s.height = -1;
-            sources.add (s);
+            sources.add(s);
             m_colorUpdated = true;
         }
     }
@@ -91,7 +86,14 @@ void TrackingVisualizer::process(AudioSampleBuffer &)
     }
 }
 
-void TrackingVisualizer::handleEvent (const EventChannel* eventInfo, const MidiMessage& event, int)
+void TrackingVisualizer::handleTTLEvent(TTLEventPtr event)
+{
+    if (!event->getChannelInfo()->getName().equalsIgnoreCase("Tracking data"))
+        return;
+    const auto *position = event->deserializeMetadata()
+}
+
+void TrackingVisualizer::handleEvent(const EventChannel *eventInfo, const MidiMessage &event, int)
 {
     if ((eventInfo->getName()).compare("Tracking data") != 0)
     {
@@ -104,19 +106,19 @@ void TrackingVisualizer::handleEvent (const EventChannel* eventInfo, const MidiM
     int evtId = evtptr->getSourceIndex();
     const auto *position = reinterpret_cast<const TrackingPosition *>(evtptr->getBinaryDataPointer());
 
-    int nSources = sources.size ();
+    int nSources = sources.size();
 
     for (int i = 0; i < nSources; i++)
     {
-        TrackingSources& currentSource = sources.getReference (i);
+        TrackingSources &currentSource = sources.getReference(i);
         if (currentSource.sourceId == nodeId && evtId == currentSource.eventIndex)
         {
-            if(!(position->x != position->x || position->y != position->y) && position->x != 0 && position->y != 0)
+            if (!(position->x != position->x || position->y != position->y) && position->x != 0 && position->y != 0)
             {
                 currentSource.x_pos = position->x;
                 currentSource.y_pos = position->y;
             }
-            if(!(position->width != position->width || position->height != position->height))
+            if (!(position->width != position->width || position->height != position->height))
             {
                 currentSource.width = position->width;
                 currentSource.height = position->height;
@@ -134,15 +136,13 @@ void TrackingVisualizer::handleEvent (const EventChannel* eventInfo, const MidiM
     }
 
     m_positionIsUpdated = true;
-
 }
 
-TrackingSources& TrackingVisualizer::getTrackingSource(int s) const
+TrackingSources &TrackingVisualizer::getTrackingSource(int s) const
 {
     if (s < sources.size())
-        return sources.getReference (s);
+        return sources.getReference(s);
 }
-
 
 float TrackingVisualizer::getX(int s) const
 {
@@ -195,10 +195,9 @@ void TrackingVisualizer::setColorIsUpdated(bool up)
     m_colorUpdated = up;
 }
 
-
 int TrackingVisualizer::getNSources() const
 {
-    return sources.size ();
+    return sources.size();
 }
 
 void TrackingVisualizer::clearPositionUpdated()
