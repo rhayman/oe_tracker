@@ -319,50 +319,53 @@ int TrackingNode::getNSources()
 
 void TrackingNode::receiveMessage(int port, String address, const TrackingData &message)
 {
-    // for (auto stream : getDataStreams())
-    // {
-    //     if ((*stream)["enable_stream"])
-    //     {
-    //         TrackingNodeSettings *selectedModule = settings[stream->getStreamId()];
-    //         if (CoreServices::getRecordingStatus())
-    //         {
-    //             if (!m_isRecordingTimeLogged)
-    //             {
-    //                 m_received_msg = 0;
-    //                 m_startingRecTimeMillis = Time::currentTimeMillis();
-    //                 m_isRecordingTimeLogged = true;
-    //                 std::cout << "Starting Recording Ts: " << m_startingRecTimeMillis << std::endl;
-    //                 selectedModule->m_messageQueue->clear();
-    //                 CoreServices::sendStatusMessage("Clearing queue before start recording");
-    //             }
-    //         }
-    //         else
-    //         {
-    //             m_isRecordingTimeLogged = false;
-    //         }
-    //         if (CoreServices::getAcquisitionStatus()) // && !CoreServices::getRecordingStatus())
-    //         {
-    //             if (!m_isAcquisitionTimeLogged)
-    //             {
-    //                 m_startingAcqTimeMillis = Time::currentTimeMillis();
-    //                 m_isAcquisitionTimeLogged = true;
-    //                 std::cout << "Starting Acquisition at Ts: " << m_startingAcqTimeMillis << std::endl;
-    //                 selectedModule->m_messageQueue->clear();
-    //                 CoreServices::sendStatusMessage("Clearing queue before start acquisition");
-    //             }
-    //             int64 ts = CoreServices::getSoftwareTimestamp();
+    for (auto stream : getDataStreams())
+    {
+        if ((*stream)["enable_stream"])
+        {
+            for (auto tm : trackingModules)
+            {
+                lock.enter();
+                if (CoreServices::getRecordingStatus())
+                {
+                    if (!m_isRecordingTimeLogged)
+                    {
+                        m_received_msg = 0;
+                        m_startingRecTimeMillis = Time::currentTimeMillis();
+                        m_isRecordingTimeLogged = true;
+                        std::cout << "Starting Recording Ts: " << m_startingRecTimeMillis << std::endl;
+                        tm->m_messageQueue->clear();
+                        CoreServices::sendStatusMessage("Clearing queue before start recording");
+                    }
+                }
+                else
+                {
+                    m_isRecordingTimeLogged = false;
+                }
+                if (CoreServices::getAcquisitionStatus()) // && !CoreServices::getRecordingStatus())
+                {
+                    if (!m_isAcquisitionTimeLogged)
+                    {
+                        m_startingAcqTimeMillis = Time::currentTimeMillis();
+                        m_isAcquisitionTimeLogged = true;
+                        std::cout << "Starting Acquisition at Ts: " << m_startingAcqTimeMillis << std::endl;
+                        tm->m_messageQueue->clear();
+                        CoreServices::sendStatusMessage("Clearing queue before start acquisition");
+                    }
+                    int64 ts = CoreServices::getSoftwareTimestamp();
 
-    //             TrackingData outputMessage = message;
-    //             outputMessage.timestamp = ts;
-    //             selectedModule->m_messageQueue->push(outputMessage);
-    //             m_received_msg++;
-    //         }
-    //         else
-    //             m_isAcquisitionTimeLogged = false;
+                    TrackingData outputMessage = message;
+                    outputMessage.timestamp = ts;
+                    tm->m_messageQueue->push(outputMessage);
+                    m_received_msg++;
+                }
+                else
+                    m_isAcquisitionTimeLogged = false;
 
-    //         lock.exit();
-    //     }
-    // }
+                lock.exit();
+            }
+        }
+    }
 }
 
 void TrackingNode::saveCustomParametersToXml(XmlElement *parentElement)
