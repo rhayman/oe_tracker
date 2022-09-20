@@ -46,45 +46,11 @@ operator<<(std::ostream &stream, const TrackingModule &module)
 
 void TrackingModule::createMetaValues()
 {
-    MetadataDescriptor desc_name = MetadataDescriptor(
-        MetadataDescriptor::MetadataType::CHAR,
-        64,
-        "Source name",
-        "Tracking source name",
-        "external.tracking.name");
-    meta_name = new MetadataValue(desc_name);
-
-    MetadataDescriptor desc_port = MetadataDescriptor(
-        MetadataDescriptor::MetadataType::CHAR,
-        16,
-        "Source port",
-        "Tracking source port",
-        "external.tracking.port");
-    meta_port = new MetadataValue(desc_port);
-
-    MetadataDescriptor desc_address = MetadataDescriptor(
-        MetadataDescriptor::MetadataType::CHAR,
-        16,
-        "Source address",
-        "Tracking source address",
-        "external.tracking.address");
-    meta_address = new MetadataValue(desc_address);
-
-    MetadataDescriptor desc_color = MetadataDescriptor(
-        MetadataDescriptor::MetadataType::CHAR,
-        16,
-        "Source color",
-        "Tracking source color",
-        "external.tracking.color");
-    meta_color = new MetadataValue(desc_color);
-
-    MetadataDescriptor desc_position = MetadataDescriptor(
-        MetadataDescriptor::MetadataType::FLOAT,
-        4,
-        "Source position",
-        "Tracking  position",
-        "external.tracking.position");
-    meta_position = new MetadataValue(desc_position);
+    meta_name = std::make_unique<MetadataValue>(desc_name);
+    meta_port = std::make_unique<MetadataValue>(desc_port);
+    meta_address = std::make_unique<MetadataValue>(desc_address);
+    meta_color = std::make_unique<MetadataValue>(desc_color);
+    meta_position = std::make_unique<MetadataValue>(desc_position);
 }
 
 TTLEventPtr TrackingModule::createEvent(int64 sample_number, EventChannel *chan)
@@ -106,11 +72,11 @@ TTLEventPtr TrackingModule::createEvent(int64 sample_number, EventChannel *chan)
     meta_position->setValue(pos);
 
     m_metadata.clear();
-    m_metadata.add(meta_name);
-    m_metadata.add(meta_port);
-    m_metadata.add(meta_address);
-    m_metadata.add(meta_color);
-    m_metadata.add(meta_position);
+    m_metadata.add(meta_name.get());
+    m_metadata.add(meta_port.get());
+    m_metadata.add(meta_address.get());
+    m_metadata.add(meta_color.get());
+    m_metadata.add(meta_position.get());
 
     TTLEventPtr event = TTLEvent::createTTLEvent(chan,
                                                  message->timestamp,

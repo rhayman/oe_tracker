@@ -33,20 +33,17 @@
 #include "TrackingVisualizerCanvas.h"
 #include "TrackingVisualizer.h"
 
-TrackingVisualizerEditor::TrackingVisualizerEditor(GenericProcessor* parentNode, bool useDefaultParameterEditors=true)
-    : VisualizerEditor(parentNode, useDefaultParameterEditors)
+TrackingVisualizerEditor::TrackingVisualizerEditor(GenericProcessor *parentNode)
+    : VisualizerEditor(parentNode, String("Tracking visual"))
 {
-    tabText = "Tracking";
-    desiredWidth = 180;
 }
 
 TrackingVisualizerEditor::~TrackingVisualizerEditor()
 {
 }
 
-Visualizer* TrackingVisualizerEditor::createNewCanvas()
+Visualizer *TrackingVisualizerEditor::createNewCanvas()
 {
-    TrackingVisualizer* processor = (TrackingVisualizer*) getProcessor();
+    TrackingVisualizer *processor = (TrackingVisualizer *)getProcessor();
     return new TrackingVisualizerCanvas(processor);
 }
-

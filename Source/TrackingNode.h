@@ -53,10 +53,42 @@ inline StringArray colors = {"red",
 							 "violet",
 							 "yellow"};
 
-using namespace std;
+const MetadataDescriptor desc_name = MetadataDescriptor(
+	MetadataDescriptor::MetadataType::CHAR,
+	64,
+	"Source name",
+	"Tracking source name",
+	"external.tracking.name");
+
+const MetadataDescriptor desc_port = MetadataDescriptor(
+	MetadataDescriptor::MetadataType::CHAR,
+	16,
+	"Source port",
+	"Tracking source port",
+	"external.tracking.port");
+
+const MetadataDescriptor desc_address = MetadataDescriptor(
+	MetadataDescriptor::MetadataType::CHAR,
+	16,
+	"Source address",
+	"Tracking source address",
+	"external.tracking.address");
+
+const MetadataDescriptor desc_position = MetadataDescriptor(
+	MetadataDescriptor::MetadataType::FLOAT,
+	4,
+	"Source position",
+	"Tracking  position",
+	"external.tracking.position");
+
+const MetadataDescriptor desc_color = MetadataDescriptor(
+	MetadataDescriptor::MetadataType::CHAR,
+	16,
+	"Source color",
+	"Tracking source color",
+	"external.tracking.color");
 
 //	This helper class allows stores input tracking data in a circular queue.
-
 class TrackingQueue
 {
 public:
@@ -155,16 +187,6 @@ public:
 			cout << "Delete server" << endl;
 			delete m_server;
 		}
-		if (meta_port)
-			delete meta_port;
-		if (meta_color)
-			delete meta_color;
-		if (meta_address)
-			delete meta_address;
-		if (meta_position)
-			delete meta_position;
-		if (meta_name)
-			delete meta_name;
 	}
 	TTLEventPtr createEvent(int64 sample_number, EventChannel *chan);
 	bool alreadyExists(const String &name)
@@ -178,11 +200,11 @@ public:
 	String m_address = "/red";
 	String m_color = "red";
 	// Metadata for attaching to TTL events
-	MetadataValue *meta_port;
-	MetadataValue *meta_name;
-	MetadataValue *meta_address;
-	MetadataValue *meta_color;
-	MetadataValue *meta_position;
+	std::unique_ptr<MetadataValue> meta_port;
+	std::unique_ptr<MetadataValue> meta_name;
+	std::unique_ptr<MetadataValue> meta_address;
+	std::unique_ptr<MetadataValue> meta_color;
+	std::unique_ptr<MetadataValue> meta_position;
 
 	TrackingQueue *m_messageQueue = nullptr;
 	TrackingServer *m_server = nullptr;

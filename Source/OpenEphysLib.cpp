@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <PluginInfo.h>
 
 #include "TrackingNode.h"
+#include "TrackingVisualizer.h"
 #include <string>
 
 #ifdef WIN32
@@ -34,7 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace Plugin;
 
-#define NUM_PLUGINS 1
+#define NUM_PLUGINS 2
 
 extern "C" EXPORT void getLibInfo(Plugin::LibraryInfo *info)
 {
@@ -51,19 +52,17 @@ extern "C" EXPORT int getPluginInfo(int index, Plugin::PluginInfo *info)
 {
 	switch (index)
 	{
-		// one case per plugin. This example is for a processor which connects directly to the signal chain
 	case 0:
-		// Type of plugin. See "Source/Processors/PluginManager/OpenEphysPlugin.h" for complete info about the different type structures
 		info->type = Plugin::Type::PROCESSOR;
-
-		// Processor name
 		info->processor.name = "OE Tracker"; // Processor name shown in the GUI
-
-		// Type of processor. Can be FILTER, SOURCE, SINK or UTILITY. Specifies where on the processor list will appear
 		info->processor.type = Processor::Type::SOURCE;
-
-		// Class factory pointer. Replace "ProcessorPluginSpace::ProcessorPlugin" with the namespace and class name.
 		info->processor.creator = &(Plugin::createProcessor<TrackingNode>);
+		break;
+	case 1:
+		info->type = Plugin::Type::PROCESSOR;
+		info->processor.name = "Tracking Visual";
+		info->processor.type = Processor::Type::SINK;
+		info->processor.creator = &(Plugin::createProcessor<TrackingVisualizer>);
 		break;
 	default:
 		return -1;

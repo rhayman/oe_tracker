@@ -37,15 +37,13 @@
 class TrackingVisualizerEditor : public VisualizerEditor
 {
 public:
-    TrackingVisualizerEditor(GenericProcessor* parentNode, bool useDefaultParameterEditors);
+    TrackingVisualizerEditor(GenericProcessor *parentNode);
     ~TrackingVisualizerEditor();
 
-    Visualizer* createNewCanvas();
+    Visualizer *createNewCanvas();
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackingVisualizerEditor);
-
 };
 
-
-#endif  // TRACKINGVISUALIZEREDITOR_H_INCLUDED
+#endif // TRACKINGVISUALIZEREDITOR_H_INCLUDED

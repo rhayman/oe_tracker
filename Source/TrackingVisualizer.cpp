@@ -45,32 +45,44 @@ TrackingVisualizer::~TrackingVisualizer()
 
 AudioProcessorEditor *TrackingVisualizer::createEditor()
 {
-    editor = std::make_unique<TrackingVisualizerEditor>(this, true);
+    editor = std::make_unique<TrackingVisualizerEditor>(this);
     return editor.get();
 }
 
 void TrackingVisualizer::updateSettings()
 {
-    sources.clear();
-    TrackingSources s;
-    int nEvents = getTotalEventChannels();
-    for (int i = 0; i < nEvents; i++)
-    {
-        const EventChannel *event = getEventChannel(i);
-        if (event->getName().compare("Tracking data") == 0)
-        {
-            s.eventIndex = event->getSourceIndex();
-            s.sourceId = event->getSourceNodeID();
-            s.name = "Tracking source " + String(event->getSourceIndex() + 1);
-            s.color = "None";
-            s.x_pos = -1;
-            s.y_pos = -1;
-            s.width = -1;
-            s.height = -1;
-            sources.add(s);
-            m_colorUpdated = true;
-        }
-    }
+    // sources.clear();
+    // TrackingSources s;
+    // int nEvents = getTotalEventChannels();
+    // for (auto stream : getDataStreams())
+    // {
+    //     auto evtChans = stream->getEventChannels();
+    //     for (auto chan : evtChans)
+    //     {
+    //         auto meta_data = chan->findMetadata();
+    //     }
+    //     std::cout << "num evtChans = " << evtChans.size() << std::endl;
+    // }
+
+    // for (int i = 0; i < nEvents; i++)
+    // {
+
+    //     const EventChannel *event = getEventChannel(i);
+
+    //     if (event->getName().compare("Tracking data") == 0)
+    //     {
+    //         s.eventIndex = event->getLocalIndex();
+    //         s.sourceId = event->getNodeId();
+    //         s.name = "Tracking source " + String(event->getLocalIndex() + 1);
+    //         s.color = "None";
+    //         s.x_pos = -1;
+    //         s.y_pos = -1;
+    //         s.width = -1;
+    //         s.height = -1;
+    //         sources.add(s);
+    //         m_colorUpdated = true;
+    //     }
+    // }
 }
 
 void TrackingVisualizer::process(AudioSampleBuffer &)
@@ -90,55 +102,68 @@ void TrackingVisualizer::handleTTLEvent(TTLEventPtr event)
 {
     if (!event->getChannelInfo()->getName().equalsIgnoreCase("Tracking data"))
         return;
-    const auto *position = event->deserializeMetadata()
+    auto n_metadatavalues = event->getMetadataValueCount();
+    for (auto stream : getDataStreams())
+    {
+        if ((*stream)["enable_stream"])
+        {
+            if (stream->getName().equalsIgnoreCase("TrackingNode datastream"))
+            {
+                auto evtChans = stream->getEventChannels();
+                for (auto chan : evtChans)
+                {
+                }
+            }
+        }
+    }
 }
 
 void TrackingVisualizer::handleEvent(const EventChannel *eventInfo, const MidiMessage &event, int)
 {
-    if ((eventInfo->getName()).compare("Tracking data") != 0)
-    {
-        return;
-    }
+    // if ((eventInfo->getName()).compare("Tracking data") != 0)
+    // {
+    //     return;
+    // }
 
-    BinaryEventPtr evtptr = BinaryEvent::deserializeFromMessage(event, eventInfo);
+    // BinaryEventPtr evtptr = BinaryEvent::deserializeFromMessage(event, eventInfo);
 
-    int nodeId = evtptr->getSourceID();
-    int evtId = evtptr->getSourceIndex();
-    const auto *position = reinterpret_cast<const TrackingPosition *>(evtptr->getBinaryDataPointer());
+    // int nodeId = evtptr->getSourceID();
+    // int evtId = evtptr->getSourceIndex();
+    // const auto *position = reinterpret_cast<const TrackingPosition *>(evtptr->getBinaryDataPointer());
 
-    int nSources = sources.size();
+    // int nSources = sources.size();
 
-    for (int i = 0; i < nSources; i++)
-    {
-        TrackingSources &currentSource = sources.getReference(i);
-        if (currentSource.sourceId == nodeId && evtId == currentSource.eventIndex)
-        {
-            if (!(position->x != position->x || position->y != position->y) && position->x != 0 && position->y != 0)
-            {
-                currentSource.x_pos = position->x;
-                currentSource.y_pos = position->y;
-            }
-            if (!(position->width != position->width || position->height != position->height))
-            {
-                currentSource.width = position->width;
-                currentSource.height = position->height;
-            }
+    // for (int i = 0; i < nSources; i++)
+    // {
+    //     TrackingSources &currentSource = sources.getReference(i);
+    //     if (currentSource.sourceId == nodeId && evtId == currentSource.eventIndex)
+    //     {
+    //         if (!(position->x != position->x || position->y != position->y) && position->x != 0 && position->y != 0)
+    //         {
+    //             currentSource.x_pos = position->x;
+    //             currentSource.y_pos = position->y;
+    //         }
+    //         if (!(position->width != position->width || position->height != position->height))
+    //         {
+    //             currentSource.width = position->width;
+    //             currentSource.height = position->height;
+    //         }
 
-            String sourceColor;
-            evtptr->getMetaDataValue(0)->getValue(sourceColor);
+    //         String sourceColor;
+    //         evtptr->getMetaDataValue(0)->getValue(sourceColor);
 
-            if (currentSource.color.compare(sourceColor) != 0)
-            {
-                currentSource.color = sourceColor;
-                m_colorUpdated = true;
-            }
-        }
-    }
+    //         if (currentSource.color.compare(sourceColor) != 0)
+    //         {
+    //             currentSource.color = sourceColor;
+    //             m_colorUpdated = true;
+    //         }
+    //     }
+    // }
 
     m_positionIsUpdated = true;
 }
 
-TrackingSources &TrackingVisualizer::getTrackingSource(int s) const
+TrackingSources &TrackingVisualizer::getTrackingSource(int s)
 {
     if (s < sources.size())
         return sources.getReference(s);

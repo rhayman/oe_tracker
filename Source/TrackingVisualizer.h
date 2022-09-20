@@ -67,7 +67,7 @@ public:
     bool getClearTracking() const;
 
     int getNSources() const;
-    TrackingSources &getTrackingSource(int i) const;
+    TrackingSources &getTrackingSource(int i);
 
     void setClearTracking(bool clear);
 
