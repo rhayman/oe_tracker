@@ -37,7 +37,7 @@ TrackingNodeEditor::TrackingNodeEditor(GenericProcessor *parentNode)
     plusButton->setBounds(30, 40, 20, 20);
     addAndMakeVisible(plusButton.get());
 
-    minusButton = make_unique<UtilityButton>("-", titleFont);
+    minusButton = std::make_unique<UtilityButton>("-", titleFont);
     minusButton->addListener(this);
     minusButton->setRadius(3.0f);
     minusButton->setBounds(5, 40, 20, 20);

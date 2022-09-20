@@ -174,17 +174,17 @@ public:
 	{
 		if (m_messageQueue)
 		{
-			cout << "Deleting message queue" << endl;
+			LOGD("Deleting message queue");
 			delete m_messageQueue;
 		}
 		if (m_server)
 		{
 			m_server->stop();
-			cout << "Stopping thread" << endl;
+			LOGD("Stopping thread");
 			m_server->stopThread(-1);
-			cout << "Waiting for exit" << endl;
+			LOGD("Waiting for exit");
 			m_server->waitForThreadToExit(-1);
-			cout << "Delete server" << endl;
+			LOGD("Delete server");
 			delete m_server;
 		}
 	}

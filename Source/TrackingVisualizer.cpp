@@ -28,7 +28,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-
+#include "TrackingNode.h"
 #include "TrackingVisualizer.h"
 #include "TrackingVisualizerEditor.h"
 
@@ -37,6 +37,7 @@
 TrackingVisualizer::TrackingVisualizer()
     : GenericProcessor("Tracking Visual"), m_positionIsUpdated(false), m_clearTracking(false), m_isRecording(false), m_colorUpdated(false)
 {
+    LOGD("[open-ephys][debug] ", "Created visualizer");
 }
 
 TrackingVisualizer::~TrackingVisualizer()
@@ -51,18 +52,23 @@ AudioProcessorEditor *TrackingVisualizer::createEditor()
 
 void TrackingVisualizer::updateSettings()
 {
-    // sources.clear();
-    // TrackingSources s;
-    // int nEvents = getTotalEventChannels();
-    // for (auto stream : getDataStreams())
-    // {
-    //     auto evtChans = stream->getEventChannels();
-    //     for (auto chan : evtChans)
-    //     {
-    //         auto meta_data = chan->findMetadata();
-    //     }
-    //     std::cout << "num evtChans = " << evtChans.size() << std::endl;
-    // }
+    sources.clear();
+    TrackingSources s;
+    int nEvents = getTotalEventChannels();
+    LOGD("[open-ephys][debug] ", "HERE");
+    
+    for (auto stream : getDataStreams())
+    {
+        if (stream->getName().equalsIgnoreCase("TrackingNode datastream"))
+        {
+            LOGC("[open-ephys][debug] ", "Got tracking node DS");
+            auto evtChans = stream->getEventChannels();
+            for (auto chan : evtChans)
+            {
+                LOGC("in here");
+            }
+        }
+    }
 
     // for (int i = 0; i < nEvents; i++)
     // {
