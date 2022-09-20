@@ -55,20 +55,25 @@ void TrackingVisualizer::updateSettings()
     sources.clear();
     TrackingSources s;
     int nEvents = getTotalEventChannels();
-    LOGD("[open-ephys][debug] ", "HERE");
-    
+    LOGD("[open-ephys][debug] ", "Got  ", String(nEvents), " total event channels");
+
     for (auto stream : getDataStreams())
     {
         if (stream->getName().equalsIgnoreCase("TrackingNode datastream"))
         {
+            // stream->
             LOGC("[open-ephys][debug] ", "Got tracking node DS");
             auto evtChans = stream->getEventChannels();
             for (auto chan : evtChans)
             {
-                LOGC("in here");
+                auto name = chan->getSourceNodeName();
+                LOGD("source node name: ", name);
+                auto params = chan->getParameters();
+                LOGD("num params = ", chan->numParameters());
             }
         }
     }
+    isEnabled = true;
 
     // for (int i = 0; i < nEvents; i++)
     // {
@@ -104,17 +109,18 @@ void TrackingVisualizer::process(AudioSampleBuffer &)
     }
 }
 
-void TrackingVisualizer::handleTTLEvent(TTLEventPtr event)
+void TrackingVisualizer::handleTTLEvent(TTLEventPtr event_ptr)
 {
-    if (!event->getChannelInfo()->getName().equalsIgnoreCase("Tracking data"))
+    if (!event_ptr->getChannelInfo()->getName().equalsIgnoreCase("Tracking data"))
         return;
-    auto n_metadatavalues = event->getMetadataValueCount();
+    auto n_metadatavalues = event_ptr->getMetadataValueCount();
     for (auto stream : getDataStreams())
     {
         if ((*stream)["enable_stream"])
         {
             if (stream->getName().equalsIgnoreCase("TrackingNode datastream"))
             {
+
                 auto evtChans = stream->getEventChannels();
                 for (auto chan : evtChans)
                 {

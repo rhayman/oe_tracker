@@ -47,3 +47,8 @@ Visualizer *TrackingVisualizerEditor::createNewCanvas()
     TrackingVisualizer *processor = (TrackingVisualizer *)getProcessor();
     return new TrackingVisualizerCanvas(processor);
 }
+
+void TrackingVisualizerEditor::updateVisualizer()
+{
+    LOGD("update called");
+}

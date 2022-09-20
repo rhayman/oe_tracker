@@ -343,7 +343,7 @@ void TrackingNode::saveCustomParametersToXml(XmlElement *parentElement)
     //     {
     //         for (auto &module : trackingModules)
     //         {
-        
+
     //             XmlElement *source = new XmlElement(module->m_name);
     //             source->setAttribute("Port", module->m_port);
     //             source->setAttribute("Address", module->m_address);
