@@ -54,46 +54,38 @@ void TrackingVisualizer::updateSettings()
 {
     sources.clear();
     TrackingSources s;
-    int nEvents = getTotalEventChannels();
-    LOGD("[open-ephys][debug] ", "Got  ", String(nEvents), " total event channels");
 
     for (auto stream : getDataStreams())
     {
         if (stream->getName().equalsIgnoreCase("TrackingNode datastream"))
         {
-            // stream->
-            LOGC("[open-ephys][debug] ", "Got tracking node DS");
             auto evtChans = stream->getEventChannels();
             for (auto chan : evtChans)
             {
-                auto name = chan->getSourceNodeName();
-                LOGD("source node name: ", name);
-                auto params = chan->getParameters();
-                LOGD("num params = ", chan->numParameters());
+                auto idx = chan->findMetadata(desc_name.getType(), desc_name.getLength(), desc_name.getIdentifier());
+                auto val = chan->getMetadataValue(idx);
+                String name;
+                val->getValue(name);
+
+                idx = chan->findMetadata(desc_color.getType(), desc_color.getLength(), desc_color.getIdentifier());
+                val = chan->getMetadataValue(idx);
+                String color;
+                val->getValue(color);
+
+                s.eventIndex = chan->getLocalIndex();
+                s.sourceId = chan->getNodeId();
+                s.name = name;
+                s.color = color;
+                s.x_pos = -1;
+                s.y_pos = -1;
+                s.width = -1;
+                s.height = -1;
+                sources.add(s);
+                m_colorUpdated = true;
             }
         }
     }
     isEnabled = true;
-
-    // for (int i = 0; i < nEvents; i++)
-    // {
-
-    //     const EventChannel *event = getEventChannel(i);
-
-    //     if (event->getName().compare("Tracking data") == 0)
-    //     {
-    //         s.eventIndex = event->getLocalIndex();
-    //         s.sourceId = event->getNodeId();
-    //         s.name = "Tracking source " + String(event->getLocalIndex() + 1);
-    //         s.color = "None";
-    //         s.x_pos = -1;
-    //         s.y_pos = -1;
-    //         s.width = -1;
-    //         s.height = -1;
-    //         sources.add(s);
-    //         m_colorUpdated = true;
-    //     }
-    // }
 }
 
 void TrackingVisualizer::process(AudioSampleBuffer &)
@@ -124,54 +116,47 @@ void TrackingVisualizer::handleTTLEvent(TTLEventPtr event_ptr)
                 auto evtChans = stream->getEventChannels();
                 for (auto chan : evtChans)
                 {
+                    auto idx = chan->findMetadata(desc_name.getType(), desc_name.getLength(), desc_name.getIdentifier());
+                    auto val = chan->getMetadataValue(idx);
+                    String name;
+                    val->getValue(name);
+
+                    for (auto source : sources)
+                    {
+                        if (name.equalsIgnoreCase(source.name))
+                        {
+                            auto idx = chan->findMetadata(desc_position.getType(), desc_position.getLength(), desc_position.getIdentifier());
+                            auto val = chan->getMetadataValue(idx);
+                            float position[4]; // x, y , height, width
+                            val->getValue(position);
+
+                            if (!(position[0] != position[0] || position[1] != position[1]) && position[0] != 0 && position[1] != 0)
+                            {
+                                source.x_pos = position[0];
+                                source.y_pos = position[1];
+                            }
+                            if (!(position[3] != position[3] || position[2] != position[2]))
+                            {
+                                source.width = position[3];
+                                source.height = position[2];
+                            }
+
+                            idx = chan->findMetadata(desc_color.getType(), desc_color.getLength(), desc_color.getIdentifier());
+                            val = chan->getMetadataValue(idx);
+                            String sourceColor;
+                            val->getValue(sourceColor);
+
+                            if (source.color.compare(sourceColor) != 0)
+                            {
+                                source.color = sourceColor;
+                                m_colorUpdated = true;
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-}
-
-void TrackingVisualizer::handleEvent(const EventChannel *eventInfo, const MidiMessage &event, int)
-{
-    // if ((eventInfo->getName()).compare("Tracking data") != 0)
-    // {
-    //     return;
-    // }
-
-    // BinaryEventPtr evtptr = BinaryEvent::deserializeFromMessage(event, eventInfo);
-
-    // int nodeId = evtptr->getSourceID();
-    // int evtId = evtptr->getSourceIndex();
-    // const auto *position = reinterpret_cast<const TrackingPosition *>(evtptr->getBinaryDataPointer());
-
-    // int nSources = sources.size();
-
-    // for (int i = 0; i < nSources; i++)
-    // {
-    //     TrackingSources &currentSource = sources.getReference(i);
-    //     if (currentSource.sourceId == nodeId && evtId == currentSource.eventIndex)
-    //     {
-    //         if (!(position->x != position->x || position->y != position->y) && position->x != 0 && position->y != 0)
-    //         {
-    //             currentSource.x_pos = position->x;
-    //             currentSource.y_pos = position->y;
-    //         }
-    //         if (!(position->width != position->width || position->height != position->height))
-    //         {
-    //             currentSource.width = position->width;
-    //             currentSource.height = position->height;
-    //         }
-
-    //         String sourceColor;
-    //         evtptr->getMetaDataValue(0)->getValue(sourceColor);
-
-    //         if (currentSource.color.compare(sourceColor) != 0)
-    //         {
-    //             currentSource.color = sourceColor;
-    //             m_colorUpdated = true;
-    //         }
-    //     }
-    // }
-
     m_positionIsUpdated = true;
 }
 

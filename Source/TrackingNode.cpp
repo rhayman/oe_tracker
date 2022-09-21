@@ -53,7 +53,7 @@ void TrackingModule::createMetaValues()
     meta_position = std::make_unique<MetadataValue>(desc_position);
 }
 
-TTLEventPtr TrackingModule::createEvent(int64 sample_number, EventChannel *chan)
+TTLEventPtr TrackingModule::createEvent(int64 sample_number)
 {
     auto *message = m_messageQueue->pop();
     if (!message)
@@ -78,7 +78,7 @@ TTLEventPtr TrackingModule::createEvent(int64 sample_number, EventChannel *chan)
     m_metadata.add(meta_color.get());
     m_metadata.add(meta_position.get());
 
-    TTLEventPtr event = TTLEvent::createTTLEvent(chan,
+    TTLEventPtr event = TTLEvent::createTTLEvent(eventChannel,
                                                  message->timestamp,
                                                  16,
                                                  true,
@@ -125,29 +125,76 @@ const String TrackingNode::getSelectedSourceName()
 void TrackingNode::parameterValueChanged(Parameter *param)
 {
     auto src_name = getSelectedSourceName();
-    updateModule(param->getStreamId(), src_name, param);
+    updateModule(src_name, param);
 }
 
-void TrackingNode::addModule(uint16 streamID, String moduleName)
+void TrackingNode::addModule(String moduleName)
 {
     if (!sourceNames.contains(moduleName))
     {
         // make sure the UDP port is unique
-        int port = DEF_PORT;
+        int port_name = DEF_PORT;
         if (!trackingModules.isEmpty())
         {
             std::vector<int> ports;
             for (const auto &tm : trackingModules)
                 ports.push_back(std::stoi(tm->m_port.toStdString()));
             auto maxPort = *std::max_element(ports.begin(), ports.end());
-            port = maxPort + 1;
+            port_name = maxPort + 1;
         }
-        trackingModules.add(new TrackingModule(moduleName, String(port), this));
+        DataStream::Settings streamsettings{"TrackingNode datastream",
+                                            "Datastream for Tracking data received from Bonsai",
+                                            "external.tracking.rawData",
+                                            getDefaultSampleRate()};
+
+        auto stream = new DataStream(streamsettings);
+        // Add some metadata to the channel / stream
+        MetadataValue name{desc_name};
+        name.setValue(moduleName);
+        stream->addMetadata(desc_name, name);
+
+        dataStreams.add(stream);
+        dataStreams.getLast()->addProcessor(processorInfo.get());
+
+        EventChannel *events;
+
+        EventChannel::Settings s{EventChannel::Type::TTL,
+                                 "Tracking data",
+                                 "Tracking data received from Bonsai. x, y, width, height",
+                                 "external.tracking.rawData",
+                                 dataStreams.getLast()};
+        events = new EventChannel(s);
+        String id = "trackingsource";
+        events->setIdentifier(id);
+        events->addProcessor(processorInfo.get());
+
+        settings.update(getDataStreams());
+        auto tm = new TrackingModule(moduleName, String(port_name), this);
+
+        // Add some metadata to the channel / stream
+        events->addMetadata(desc_name, name);
+
+        MetadataValue address{desc_address};
+        address.setValue(tm->m_address);
+        events->addMetadata(desc_address, address);
+
+        MetadataValue port{desc_port};
+        port.setValue(tm->m_port);
+        events->addMetadata(desc_port, port);
+
+        MetadataValue color{desc_color};
+        color.setValue(tm->m_color);
+        events->addMetadata(desc_color, color);
+
+        tm->eventChannel = events;
+        eventChannels.add(events);
+        trackingModules.add(tm);
         sourceNames.add(moduleName);
+        settings.update(getDataStreams());
     }
 }
 
-void TrackingNode::updateModule(uint16 streamID, String name, Parameter *param)
+void TrackingNode::updateModule(String name, Parameter *param)
 {
     if (sourceNames.contains(name))
     {
@@ -189,7 +236,7 @@ void TrackingNode::updateModule(uint16 streamID, String name, Parameter *param)
     }
 }
 
-void TrackingNode::removeModule(uint16 streamID, String moduleName)
+void TrackingNode::removeModule(String moduleName)
 {
     if (sourceNames.contains(moduleName))
     {
@@ -197,10 +244,34 @@ void TrackingNode::removeModule(uint16 streamID, String moduleName)
         {
             if (tm->alreadyExists(moduleName))
             {
+                for (auto stream : getDataStreams())
+                {
+                    for (auto chan : getEventChannels())
+                    {
+                        auto idx = chan->findMetadata(desc_name.getType(), desc_name.getLength(), desc_name.getIdentifier());
+                        auto val = chan->getMetadataValue(idx);
+                        String name;
+                        val->getValue(name);
+                        if (name.equalsIgnoreCase(moduleName))
+                        {
+                            eventChannels.removeObject(chan, true);
+                        }
+                    }
+                    auto idx = stream->findMetadata(desc_name.getType(), desc_name.getLength(), desc_name.getIdentifier());
+                    auto val = stream->getMetadataValue(idx);
+                    String name;
+                    val->getValue(name);
+                    if (name.equalsIgnoreCase(moduleName))
+                    {
+                        dataStreams.removeObject(stream, true);
+                    }
+                }
+
                 trackingModules.removeObject(tm);
                 sourceNames.removeString(moduleName);
             }
         }
+        settings.update(getDataStreams());
     }
 }
 
@@ -220,30 +291,11 @@ void TrackingNode::updateSettings()
     dataStreams.clear();
     eventChannels.clear();
 
-    DataStream::Settings streamsettings{"TrackingNode datastream",
-                                        "Datastream for Tracking data received from Bonsai",
-                                        "external.tracking.rawData",
-                                        getDefaultSampleRate()};
-
-    dataStreams.add(new DataStream(streamsettings));
-    dataStreams.getLast()->addProcessor(processorInfo.get());
-
-    EventChannel *events;
-
-    EventChannel::Settings s{EventChannel::Type::TTL,
-                             "Tracking data",
-                             "Tracking data received from Bonsai. x, y, width, height",
-                             "external.tracking.rawData",
-                             dataStreams.getLast()};
-
-    events = new EventChannel(s);
-    eventChannel = events;
-    String id = "trackingsource";
-    events->setIdentifier(id);
-    events->addProcessor(processorInfo.get());
-    eventChannels.add(events);
+    if (sourceNames.isEmpty())
+    {
+        addModule("Tracking source 1");
+    }
     isEnabled = true;
-    settings.update(getDataStreams());
 }
 
 void TrackingNode::process(AudioBuffer<float> &buffer)
@@ -263,7 +315,7 @@ void TrackingNode::process(AudioBuffer<float> &buffer)
             {
                 const uint16 streamId = stream->getStreamId();
                 const int64 firstSampleInBlock = getFirstSampleNumberForBlock(streamId);
-                TTLEventPtr ptr = module->createEvent(firstSampleInBlock, eventChannel);
+                TTLEventPtr ptr = module->createEvent(firstSampleInBlock);
                 addEvent(ptr, firstSampleInBlock);
             }
         }

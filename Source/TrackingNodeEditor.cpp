@@ -19,7 +19,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-
+#include <vector>
 #include "TrackingNodeEditor.h"
 #include "TrackingNode.h"
 #include "../../../plugin-GUI/Source/Utils/Utils.h"
@@ -57,16 +57,24 @@ void TrackingNodeEditor::buttonClicked(Button *btn)
         auto param = processor->getParameter("Source");
         CategoricalParameter *cparam = (CategoricalParameter *)param;
         auto oldSources = cparam->getCategories();
-        String txt = "Tracking source " + String(oldSources.size() + 1);
+        int iSource = 0;
+        if (!oldSources.isEmpty())
+        {
+            std::vector<int> sources;
+            for (auto str : oldSources)
+            {
+                String n = str.fromFirstOccurrenceOf("source ", false, true);
+                sources.push_back(std::stoi(n.toStdString()));
+            }
+            int max = *std::max_element(sources.cbegin(), sources.cend());
+            iSource = max;
+        }
+        String txt = "Tracking source " + String(iSource + 1);
         StringArray newSources{oldSources};
         newSources.add(txt);
         cparam->setCategories(newSources);
-        processor->addModule(param->getStreamId(), txt);
+        processor->addModule(txt);
         updateView();
-        for (auto &pe : parameterEditors)
-        {
-            std::cout << "pe name: " << pe->getParameterName() << std::endl;
-        }
     }
     if (btn == minusButton.get())
     {
@@ -77,7 +85,7 @@ void TrackingNodeEditor::buttonClicked(Button *btn)
         auto str = cparam->getValueAsString();
         oldSources.removeString(str);
         cparam->setCategories(oldSources);
-        processor->removeModule(param->getStreamId(), str);
+        processor->removeModule(str);
         updateView();
     }
 }
