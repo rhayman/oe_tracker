@@ -84,7 +84,7 @@ TTLEventPtr TrackingModule::createEvent(int64 sample_number)
                                                  0,
                                                  true,
                                                  m_metadata);
-    
+
     return event;
 };
 
@@ -105,9 +105,10 @@ TrackingNode::TrackingNode()
 
 TrackingNode::~TrackingNode()
 {
-    // for (auto & tm : trackingModules) {
-    //     removeModule(tm->m_name);
-    // }
+    for (auto &tm : trackingModules)
+    {
+        removeModule(tm->m_name);
+    }
 }
 
 AudioProcessorEditor *TrackingNode::createEditor()
@@ -159,7 +160,7 @@ void TrackingNode::addModule(String moduleName)
         MetadataValue name{desc_name};
         name.setValue(moduleName);
         stream->addMetadata(desc_name, name);
-        
+
         stream->addProcessor(processorInfo.get());
 
         EventChannel *events;
@@ -250,6 +251,9 @@ void TrackingNode::removeModule(String moduleName)
         {
             if (tm->alreadyExists(moduleName))
             {
+                tm->m_server->stop();
+                tm->m_server->stopThread(-1);
+                tm->m_server->waitForThreadToExit(-1);
                 for (auto stream : getDataStreams())
                 {
                     for (auto chan : getEventChannels())
@@ -309,7 +313,6 @@ void TrackingNode::process(AudioBuffer<float> &buffer)
 
     std::cout << "trackingModules.size(): " << trackingModules.size() << std::endl;
     std::cout << "getDataStreams().size(): " << getDataStreams().size() << std::endl;
-    
 
     for (auto stream : getDataStreams())
     {
@@ -378,7 +381,7 @@ void TrackingNode::receiveMessage(int port, String address, const TrackingData &
                 }
 
                 m_positionIsUpdated = true;
-                
+
                 int64 ts = CoreServices::getSoftwareTimestamp();
 
                 TrackingData outputMessage = message;
