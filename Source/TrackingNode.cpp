@@ -55,6 +55,7 @@ void TrackingModule::createMetaValues()
 
 TTLEventPtr TrackingModule::createEvent(int64 sample_number)
 {
+    std::cout << "in createEvent" << std::endl;
     auto *message = m_messageQueue->pop();
     if (!message)
         return nullptr;
@@ -79,11 +80,11 @@ TTLEventPtr TrackingModule::createEvent(int64 sample_number)
     m_metadata.add(meta_position.get());
 
     TTLEventPtr event = TTLEvent::createTTLEvent(eventChannel,
-                                                 message->timestamp,
-                                                 16,
+                                                 sample_number,
+                                                 0,
                                                  true,
                                                  m_metadata);
-
+    
     return event;
 };
 
@@ -96,11 +97,17 @@ TrackingNode::TrackingNode()
     addCategoricalParameter(Parameter::GLOBAL_SCOPE, "Color", "Tracking source color to be displayed",
                             colors,
                             0);
+    m_positionIsUpdated = false;
+    m_isRecordingTimeLogged = false;
+    m_isAcquisitionTimeLogged = false;
     lastNumInputs = 0;
 }
 
 TrackingNode::~TrackingNode()
 {
+    // for (auto & tm : trackingModules) {
+    //     removeModule(tm->m_name);
+    // }
 }
 
 AudioProcessorEditor *TrackingNode::createEditor()
@@ -152,9 +159,8 @@ void TrackingNode::addModule(String moduleName)
         MetadataValue name{desc_name};
         name.setValue(moduleName);
         stream->addMetadata(desc_name, name);
-
-        dataStreams.add(stream);
-        dataStreams.getLast()->addProcessor(processorInfo.get());
+        
+        stream->addProcessor(processorInfo.get());
 
         EventChannel *events;
 
@@ -162,13 +168,12 @@ void TrackingNode::addModule(String moduleName)
                                  "Tracking data",
                                  "Tracking data received from Bonsai. x, y, width, height",
                                  "external.tracking.rawData",
-                                 dataStreams.getLast()};
+                                 stream};
         events = new EventChannel(s);
         String id = "trackingsource";
         events->setIdentifier(id);
         events->addProcessor(processorInfo.get());
 
-        settings.update(getDataStreams());
         auto tm = new TrackingModule(moduleName, String(port_name), this);
 
         // Add some metadata to the channel / stream
@@ -187,6 +192,7 @@ void TrackingNode::addModule(String moduleName)
         events->addMetadata(desc_color, color);
 
         tm->eventChannel = events;
+        dataStreams.add(stream);
         eventChannels.add(events);
         trackingModules.add(tm);
         sourceNames.add(moduleName);
@@ -290,36 +296,38 @@ void TrackingNode::updateSettings()
 {
     dataStreams.clear();
     eventChannels.clear();
-
-    if (sourceNames.isEmpty())
-    {
-        addModule("Tracking source 1");
-    }
     isEnabled = true;
 }
 
 void TrackingNode::process(AudioBuffer<float> &buffer)
 {
-
-    checkForEvents(true);
+    std::cout << "process in node" << std::endl;
     if (!m_positionIsUpdated)
         return;
 
     lock.enter();
 
+    std::cout << "trackingModules.size(): " << trackingModules.size() << std::endl;
+    std::cout << "getDataStreams().size(): " << getDataStreams().size() << std::endl;
+    
+
     for (auto stream : getDataStreams())
     {
-        if ((*stream)["enable_stream"])
+        std::cout << "in this bit" << std::endl;
+        auto streamId = stream->getStreamId();
+        std::cout << "streamId: " << streamId << std::endl;
+        const uint32 numSamplesInBlock = getNumSamplesInBlock(streamId);
+        std::cout << "numSamplesInBlock: " << numSamplesInBlock << std::endl;
+        auto sample_number = getFirstSampleNumberForBlock(streamId);
+        std::cout << "before createevent" << std::endl;
+        for (auto &module : trackingModules)
         {
-            for (auto &module : trackingModules)
-            {
-                const uint16 streamId = stream->getStreamId();
-                const int64 firstSampleInBlock = getFirstSampleNumberForBlock(streamId);
-                TTLEventPtr ptr = module->createEvent(firstSampleInBlock);
-                addEvent(ptr, firstSampleInBlock);
-            }
+            TTLEventPtr ptr = module->createEvent(sample_number);
+            std::cout << "after createevent" << std::endl;
+            addEvent(ptr, 0);
         }
     }
+    std::cout << "here now" << std::endl;
     lock.exit();
     m_positionIsUpdated = false;
 }
@@ -339,49 +347,50 @@ void TrackingNode::receiveMessage(int port, String address, const TrackingData &
 {
     for (auto stream : getDataStreams())
     {
-        if ((*stream)["enable_stream"])
+        for (auto tm : trackingModules)
         {
-            for (auto tm : trackingModules)
+            lock.enter();
+            if (CoreServices::getRecordingStatus())
             {
-                lock.enter();
-                if (CoreServices::getRecordingStatus())
+                if (!m_isRecordingTimeLogged)
                 {
-                    if (!m_isRecordingTimeLogged)
-                    {
-                        m_received_msg = 0;
-                        m_startingRecTimeMillis = Time::currentTimeMillis();
-                        m_isRecordingTimeLogged = true;
-                        std::cout << "Starting Recording Ts: " << m_startingRecTimeMillis << std::endl;
-                        tm->m_messageQueue->clear();
-                        CoreServices::sendStatusMessage("Clearing queue before start recording");
-                    }
+                    m_received_msg = 0;
+                    m_startingRecTimeMillis = Time::currentTimeMillis();
+                    m_isRecordingTimeLogged = true;
+                    std::cout << "Starting Recording Ts: " << m_startingRecTimeMillis << std::endl;
+                    tm->m_messageQueue->clear();
+                    CoreServices::sendStatusMessage("Clearing queue before start recording");
                 }
-                else
-                {
-                    m_isRecordingTimeLogged = false;
-                }
-                if (CoreServices::getAcquisitionStatus()) // && !CoreServices::getRecordingStatus())
-                {
-                    if (!m_isAcquisitionTimeLogged)
-                    {
-                        m_startingAcqTimeMillis = Time::currentTimeMillis();
-                        m_isAcquisitionTimeLogged = true;
-                        std::cout << "Starting Acquisition at Ts: " << m_startingAcqTimeMillis << std::endl;
-                        tm->m_messageQueue->clear();
-                        CoreServices::sendStatusMessage("Clearing queue before start acquisition");
-                    }
-                    int64 ts = CoreServices::getSoftwareTimestamp();
-
-                    TrackingData outputMessage = message;
-                    outputMessage.timestamp = ts;
-                    tm->m_messageQueue->push(outputMessage);
-                    m_received_msg++;
-                }
-                else
-                    m_isAcquisitionTimeLogged = false;
-
-                lock.exit();
             }
+            else
+            {
+                m_isRecordingTimeLogged = false;
+            }
+            if (CoreServices::getAcquisitionStatus()) // && !CoreServices::getRecordingStatus())
+            {
+                if (!m_isAcquisitionTimeLogged)
+                {
+                    m_startingAcqTimeMillis = Time::currentTimeMillis();
+                    m_isAcquisitionTimeLogged = true;
+                    std::cout << "Starting Acquisition at Ts: " << m_startingAcqTimeMillis << std::endl;
+                    tm->m_messageQueue->clear();
+                    CoreServices::sendStatusMessage("Clearing queue before start acquisition");
+                }
+
+                m_positionIsUpdated = true;
+                
+                int64 ts = CoreServices::getSoftwareTimestamp();
+
+                TrackingData outputMessage = message;
+                // std::cout << "outputMessage: " << outputMessage << std::endl;
+                outputMessage.timestamp = ts;
+                tm->m_messageQueue->push(outputMessage);
+                m_received_msg++;
+            }
+            else
+                m_isAcquisitionTimeLogged = false;
+
+            lock.exit();
         }
     }
 }
@@ -541,9 +550,9 @@ void TrackingServer::removeProcessor(TrackingNode *processor)
 
 void TrackingServer::run()
 {
-    cout << "SLeeping!" << endl;
+    std::cout << "Sleeping!" << endl;
     sleep(1000);
-    cout << "Running!" << endl;
+    std::cout << "Running!" << endl;
     // Start the oscpack OSC Listener Thread
     try
     {

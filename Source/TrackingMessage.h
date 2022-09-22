@@ -44,6 +44,13 @@ struct TrackingPosition {
 struct TrackingData {
     uint64 timestamp;
     TrackingPosition position;
+    friend std::ostream &operator<<(std::ostream &stream, const TrackingData &td){
+        stream << "x: " << td.position.x << std::endl;
+        stream << "y: " << td.position.y << std::endl;
+        stream << "width: " << td.position.width << std::endl;
+        stream << "height: " << td.position.height << std::endl;
+        return stream;
+    };
 };
 
 struct TrackingSources

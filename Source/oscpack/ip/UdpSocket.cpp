@@ -35,7 +35,7 @@
 	above license is reproduced.
 */
 #include "UdpSocket.h"
-
+#include <iostream>
 #ifdef _WIN64
 
 #include <winsock2.h>   // this must come first to prevent errors with MSVC7
@@ -439,9 +439,7 @@ public:
             events[j] = event;
         }
 
-
         events[ socketListeners_.size() ] = breakEvent_; // last event in the collection is the break event
-
 
         // configure the timer queue
         double currentTimeMs = GetCurrentTimeMs();
@@ -483,7 +481,6 @@ public:
                     }
                 }
             }
-
             // execute any expired timers
             currentTimeMs = GetCurrentTimeMs();
             bool resort = false;
@@ -500,6 +497,7 @@ public:
             if( resort )
                 std::sort( timerQueue_.begin(), timerQueue_.end(), CompareScheduledTimerCalls );
         }
+        std::cout << "5" << std::endl;
 
         delete [] data;
 
@@ -513,6 +511,7 @@ public:
             unsigned long enableNonblocking = 0;
             ioctlsocket( i->second->impl_->Socket(), FIONBIO, &enableNonblocking );  // make the socket blocking again
         }
+        std::cout << "6" << std::endl;
     }
 
     void Break()

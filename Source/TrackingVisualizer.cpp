@@ -86,6 +86,8 @@ void TrackingVisualizer::updateSettings()
         }
     }
     isEnabled = true;
+    std::cout << "getDataStreams().size(): " << getDataStreams().size() << std::endl;
+    std::cout << "sources.size(): " << sources.size() << std::endl;
 }
 
 void TrackingVisualizer::process(AudioSampleBuffer &)
@@ -99,58 +101,62 @@ void TrackingVisualizer::process(AudioSampleBuffer &)
         m_isRecording = false;
         m_clearTracking = false;
     }
+    std::cout << "process: sources.size(): " << sources.size() << std::endl;
 }
 
 void TrackingVisualizer::handleTTLEvent(TTLEventPtr event_ptr)
 {
+    std::cout << "handling ttl event: " << std::endl;
     if (!event_ptr->getChannelInfo()->getName().equalsIgnoreCase("Tracking data"))
         return;
-    auto n_metadatavalues = event_ptr->getMetadataValueCount();
     for (auto stream : getDataStreams())
     {
-        if ((*stream)["enable_stream"])
+        std::cout << "got datastream: " << std::endl;
+        if (stream->getName().equalsIgnoreCase("TrackingNode datastream"))
         {
-            if (stream->getName().equalsIgnoreCase("TrackingNode datastream"))
+            auto evtChans = stream->getEventChannels();
+            for (auto chan : evtChans)
             {
+                std::cout << "got chan" << std::endl;
+                auto idx = chan->findMetadata(desc_name.getType(), desc_name.getLength(), desc_name.getIdentifier());
+                auto val = chan->getMetadataValue(idx);
+                String name;
+                val->getValue(name);
+                std::cout << "name: " << name << std::endl;
 
-                auto evtChans = stream->getEventChannels();
-                for (auto chan : evtChans)
+                for (auto source : sources)
                 {
-                    auto idx = chan->findMetadata(desc_name.getType(), desc_name.getLength(), desc_name.getIdentifier());
-                    auto val = chan->getMetadataValue(idx);
-                    String name;
-                    val->getValue(name);
-
-                    for (auto source : sources)
+                    if (name.equalsIgnoreCase(source.name))
                     {
-                        if (name.equalsIgnoreCase(source.name))
+                        auto idx = chan->findMetadata(desc_position.getType(), desc_position.getLength(), desc_position.getIdentifier());
+                        auto val = chan->getMetadataValue(idx);
+                        Array<float> position; // x, y , height, width
+                        val->getValue(position);
+                        std::cout << "done position" << std::endl;
+
+
+                        if (!(position[0] != position[0] || position[1] != position[1]) && position[0] != 0 && position[1] != 0)
                         {
-                            auto idx = chan->findMetadata(desc_position.getType(), desc_position.getLength(), desc_position.getIdentifier());
-                            auto val = chan->getMetadataValue(idx);
-                            float position[4]; // x, y , height, width
-                            val->getValue(position);
+                            source.x_pos = position[0];
+                            source.y_pos = position[1];
+                        }
+                        if (!(position[3] != position[3] || position[2] != position[2]))
+                        {
+                            source.width = position[3];
+                            source.height = position[2];
+                        }
 
-                            if (!(position[0] != position[0] || position[1] != position[1]) && position[0] != 0 && position[1] != 0)
-                            {
-                                source.x_pos = position[0];
-                                source.y_pos = position[1];
-                            }
-                            if (!(position[3] != position[3] || position[2] != position[2]))
-                            {
-                                source.width = position[3];
-                                source.height = position[2];
-                            }
+                        idx = chan->findMetadata(desc_color.getType(), desc_color.getLength(), desc_color.getIdentifier());
+                        val = chan->getMetadataValue(idx);
+                        String sourceColor;
+                        val->getValue(sourceColor);
 
-                            idx = chan->findMetadata(desc_color.getType(), desc_color.getLength(), desc_color.getIdentifier());
-                            val = chan->getMetadataValue(idx);
-                            String sourceColor;
-                            val->getValue(sourceColor);
+                        std::cout << "sourceColor: " << sourceColor << std::endl;
 
-                            if (source.color.compare(sourceColor) != 0)
-                            {
-                                source.color = sourceColor;
-                                m_colorUpdated = true;
-                            }
+                        if (source.color.compare(sourceColor) != 0)
+                        {
+                            source.color = sourceColor;
+                            m_colorUpdated = true;
                         }
                     }
                 }

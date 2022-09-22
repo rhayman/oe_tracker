@@ -145,7 +145,7 @@ class TrackingModule
 public:
 	TrackingModule() { createMetaValues(); }
 	TrackingModule(String name, TrackingNode *processor)
-		: m_name(name), m_messageQueue(std::make_unique<TrackingQueue>().get()), m_server(std::make_unique<TrackingServer>(m_port, m_address).get())
+		: m_name(name), m_messageQueue(std::make_unique<TrackingQueue>()), m_server(std::make_unique<TrackingServer>(m_port, m_address))
 	{
 		createMetaValues();
 		m_server->addProcessor(processor);
@@ -172,14 +172,14 @@ public:
 	}
 	~TrackingModule()
 	{
-		if (m_server)
-		{
-			m_server->stop();
-			LOGD("Stopping thread");
-			m_server->stopThread(-1);
-			LOGD("Waiting for exit");
-			m_server->waitForThreadToExit(-1);
-		}
+		// if (m_server)
+		// {
+			// m_server->stop();
+			// LOGD("Stopping thread");
+			// m_server->stopThread(-1);
+			// LOGD("Waiting for exit");
+			// m_server->waitForThreadToExit(-1);
+		// }
 	}
 	TTLEventPtr createEvent(int64 sample_number);
 	bool alreadyExists(const String &name)
@@ -199,8 +199,8 @@ public:
 	std::unique_ptr<MetadataValue> meta_color;
 	std::unique_ptr<MetadataValue> meta_position;
 
-	std::unique_ptr<TrackingQueue> m_messageQueue;
-	std::unique_ptr<TrackingServer> m_server;
+	std::unique_ptr<TrackingQueue> m_messageQueue = nullptr;
+	std::unique_ptr<TrackingServer> m_server = nullptr;
 	MetadataValueArray m_metadata;
 	EventChannel *eventChannel;
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackingModule);
