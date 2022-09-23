@@ -34,6 +34,32 @@ void TrackingNodeSettings::updateModule(String name, Parameter *param)
 {
 }
 
+TTLEventPtr TrackingNodeSettings::createEvent(int sample_number, TrackingData * position) {
+    if (!position)
+        return nullptr;
+    Array<float> pos;
+    pos.add(position->position.x);
+    pos.add(position->position.y);
+    pos.add(position->position.height);
+    pos.add(position->position.width);
+    meta_position->setValue(pos);
+
+    m_metadata.clear();
+    m_metadata.add(meta_name.get());
+    m_metadata.add(meta_port.get());
+    m_metadata.add(meta_address.get());
+    m_metadata.add(meta_color.get());
+    m_metadata.add(meta_position.get());
+
+    TTLEventPtr event = TTLEvent::createTTLEvent(eventChannel,
+                                                 sample_number,
+                                                 0,
+                                                 true,
+                                                 m_metadata);
+    
+    return event;
+};
+
 std::ostream &
 operator<<(std::ostream &stream, const TrackingModule &module)
 {
@@ -53,40 +79,40 @@ void TrackingModule::createMetaValues()
     meta_position = std::make_unique<MetadataValue>(desc_position);
 }
 
-TTLEventPtr TrackingModule::createEvent(int64 sample_number)
-{
-    std::cout << "in createEvent" << std::endl;
-    auto *message = m_messageQueue->pop();
-    if (!message)
-        return nullptr;
-    // attach metadata to the TTL Event as BinaryEvents aren't dealt with (yet?)
-    // in GenericProcessor::checkForEvents()
-    meta_name->setValue(m_name);
-    meta_port->setValue(m_port);
-    meta_address->setValue(m_address);
-    meta_color->setValue(m_color);
-    Array<float> pos;
-    pos.add(message->position.x);
-    pos.add(message->position.y);
-    pos.add(message->position.height);
-    pos.add(message->position.width);
-    meta_position->setValue(pos);
+// TTLEventPtr TrackingModule::createEvent(int64 sample_number)
+// {
+//     std::cout << "TRACKINGMODULE CREATEEVENT" << std::endl;
+//     auto *message = m_messageQueue->pop();
+//     if (!message)
+//         return nullptr;
+//     // attach metadata to the TTL Event as BinaryEvents aren't dealt with (yet?)
+//     // in GenericProcessor::checkForEvents()
+//     meta_name->setValue(m_name);
+//     meta_port->setValue(m_port);
+//     meta_address->setValue(m_address);
+//     meta_color->setValue(m_color);
+//     Array<float> pos;
+//     pos.add(message->position.x);
+//     pos.add(message->position.y);
+//     pos.add(message->position.height);
+//     pos.add(message->position.width);
+//     meta_position->setValue(pos);
 
-    m_metadata.clear();
-    m_metadata.add(meta_name.get());
-    m_metadata.add(meta_port.get());
-    m_metadata.add(meta_address.get());
-    m_metadata.add(meta_color.get());
-    m_metadata.add(meta_position.get());
+//     m_metadata.clear();
+//     m_metadata.add(meta_name.get());
+//     m_metadata.add(meta_port.get());
+//     m_metadata.add(meta_address.get());
+//     m_metadata.add(meta_color.get());
+//     m_metadata.add(meta_position.get());
 
-    TTLEventPtr event = TTLEvent::createTTLEvent(eventChannel,
-                                                 sample_number,
-                                                 0,
-                                                 true,
-                                                 m_metadata);
+//     TTLEventPtr event = TTLEvent::createTTLEvent(eventChannel,
+//                                                  sample_number,
+//                                                  0,
+//                                                  true,
+//                                                  m_metadata);
     
-    return event;
-};
+//     return event;
+// };
 
 TrackingNode::TrackingNode()
     : GenericProcessor("Tracker")
@@ -105,9 +131,11 @@ TrackingNode::TrackingNode()
 
 TrackingNode::~TrackingNode()
 {
-    // for (auto & tm : trackingModules) {
-    //     removeModule(tm->m_name);
-    // }
+    if (!trackingModules.isEmpty()) {
+        for (auto & tm : trackingModules) {
+            removeModule(tm->m_name);
+        }
+    }
 }
 
 AudioProcessorEditor *TrackingNode::createEditor()
@@ -179,25 +207,21 @@ void TrackingNode::addModule(String moduleName)
         // Add some metadata to the channel / stream
         events->addMetadata(desc_name, name);
 
-        MetadataValue address{desc_address};
-        address.setValue(tm->m_address);
-        events->addMetadata(desc_address, address);
-
-        MetadataValue port{desc_port};
-        port.setValue(tm->m_port);
-        events->addMetadata(desc_port, port);
-
-        MetadataValue color{desc_color};
-        color.setValue(tm->m_color);
-        events->addMetadata(desc_color, color);
-
-        tm->eventChannel = events;
         dataStreams.add(stream);
         eventChannels.add(events);
         trackingModules.add(tm);
         sourceNames.add(moduleName);
+        auto streamId = stream->getStreamId();
+        settings[streamId]->eventChannel = events;
+        settings[streamId]->meta_address->setValue(tm->m_address);
+        settings[streamId]->meta_port->setValue(tm->m_port);
+        settings[streamId]->meta_color->setValue(tm->m_color);
+        settings[streamId]->meta_name->setValue(tm->m_name);
         settings.update(getDataStreams());
+        LOGD("logd output");
+        std::cout << "cout output" << std::endl;
     }
+
 }
 
 void TrackingNode::updateModule(String name, Parameter *param)
@@ -213,21 +237,25 @@ void TrackingNode::updateModule(String name, Parameter *param)
                     CategoricalParameter *cparam = (CategoricalParameter *)param;
                     auto new_color = cparam->getSelectedString();
                     tm->m_color = new_color;
+                    settings[param->getStreamId()]->meta_color->setValue(new_color);
                 }
                 else if (param->getName().equalsIgnoreCase("port"))
                 {
                     auto new_port = param->getValueAsString();
                     tm->m_port = new_port;
+                    settings[param->getStreamId()]->meta_port->setValue(new_port);
                 }
                 else if (param->getName().equalsIgnoreCase("address"))
                 {
                     auto new_address = param->getValueAsString();
                     tm->m_address = new_address;
+                    settings[param->getStreamId()]->meta_address->setValue(new_address);
                 }
                 else if (param->getName().equalsIgnoreCase("source"))
                 {
                     CategoricalParameter *cparam = (CategoricalParameter *)param;
-                    auto src_name = cparam->getSelectedString();
+                    auto new_name = cparam->getSelectedString();
+                    settings[param->getStreamId()]->meta_name->setValue(new_name);
                     auto *port = getParameter("Port");
                     auto *address = getParameter("Address");
                     auto *col = getParameter("Color");
@@ -239,6 +267,7 @@ void TrackingNode::updateModule(String name, Parameter *param)
                 }
             }
         }
+        settings.update(getDataStreams());
     }
 }
 
@@ -269,11 +298,12 @@ void TrackingNode::removeModule(String moduleName)
                     val->getValue(name);
                     if (name.equalsIgnoreCase(moduleName))
                     {
+                        std::cout << "Removing object from datastream" << std::endl;
                         dataStreams.removeObject(stream, true);
                     }
                 }
 
-                trackingModules.removeObject(tm);
+                trackingModules.removeObject(tm, true);
                 sourceNames.removeString(moduleName);
             }
         }
@@ -301,39 +331,29 @@ void TrackingNode::updateSettings()
 
 void TrackingNode::process(AudioBuffer<float> &buffer)
 {
-    std::cout << "process in node" << std::endl;
     if (!m_positionIsUpdated)
         return;
-
-    lock.enter();
-
-    std::cout << "trackingModules.size(): " << trackingModules.size() << std::endl;
-    std::cout << "getDataStreams().size(): " << getDataStreams().size() << std::endl;
-    
+    std::cout << "in process" << std::endl;
 
     for (auto stream : getDataStreams())
     {
-        std::cout << "in this bit" << std::endl;
         auto streamId = stream->getStreamId();
-        std::cout << "streamId: " << streamId << std::endl;
-        const uint32 numSamplesInBlock = getNumSamplesInBlock(streamId);
-        std::cout << "numSamplesInBlock: " << numSamplesInBlock << std::endl;
+        TrackingNodeSettings* module = settings[streamId];
         auto sample_number = getFirstSampleNumberForBlock(streamId);
-        std::cout << "before createevent" << std::endl;
-        for (auto &module : trackingModules)
-        {
-            TTLEventPtr ptr = module->createEvent(sample_number);
-            std::cout << "after createevent" << std::endl;
-            addEvent(ptr, 0);
+        for (auto &tm: trackingModules) {
+            if (tm->eventChannel == module->eventChannel) {
+                auto * message = tm->m_messageQueue->pop();
+                settings[streamId]->createEvent(sample_number, message);
+            }
         }
+        std::cout << "sample_number: " << 0 << std::endl;
     }
-    std::cout << "here now" << std::endl;
-    lock.exit();
     m_positionIsUpdated = false;
 }
 
 void TrackingNode::handleTTLEvent(TTLEventPtr event)
 {
+    std::cout << "HANDLETTLEVENT" << std::endl;
 }
 
 // TODO: CLEAN THIS
@@ -345,53 +365,48 @@ int TrackingNode::getNSources()
 
 void TrackingNode::receiveMessage(int port, String address, const TrackingData &message)
 {
-    for (auto stream : getDataStreams())
+    for (auto &tm : trackingModules)
     {
-        for (auto tm : trackingModules)
+        lock.enter();
+        if (CoreServices::getRecordingStatus())
         {
-            lock.enter();
-            if (CoreServices::getRecordingStatus())
+            if (!m_isRecordingTimeLogged)
             {
-                if (!m_isRecordingTimeLogged)
-                {
-                    m_received_msg = 0;
-                    m_startingRecTimeMillis = Time::currentTimeMillis();
-                    m_isRecordingTimeLogged = true;
-                    std::cout << "Starting Recording Ts: " << m_startingRecTimeMillis << std::endl;
-                    tm->m_messageQueue->clear();
-                    CoreServices::sendStatusMessage("Clearing queue before start recording");
-                }
+                m_received_msg = 0;
+                m_startingRecTimeMillis = Time::currentTimeMillis();
+                m_isRecordingTimeLogged = true;
+                std::cout << "Starting Recording Ts: " << m_startingRecTimeMillis << std::endl;
+                tm->m_messageQueue->clear();
+                CoreServices::sendStatusMessage("Clearing queue before start recording");
             }
-            else
-            {
-                m_isRecordingTimeLogged = false;
-            }
-            if (CoreServices::getAcquisitionStatus()) // && !CoreServices::getRecordingStatus())
-            {
-                if (!m_isAcquisitionTimeLogged)
-                {
-                    m_startingAcqTimeMillis = Time::currentTimeMillis();
-                    m_isAcquisitionTimeLogged = true;
-                    std::cout << "Starting Acquisition at Ts: " << m_startingAcqTimeMillis << std::endl;
-                    tm->m_messageQueue->clear();
-                    CoreServices::sendStatusMessage("Clearing queue before start acquisition");
-                }
-
-                m_positionIsUpdated = true;
-                
-                int64 ts = CoreServices::getSoftwareTimestamp();
-
-                TrackingData outputMessage = message;
-                // std::cout << "outputMessage: " << outputMessage << std::endl;
-                outputMessage.timestamp = ts;
-                tm->m_messageQueue->push(outputMessage);
-                m_received_msg++;
-            }
-            else
-                m_isAcquisitionTimeLogged = false;
-
-            lock.exit();
         }
+        else
+        {
+            m_isRecordingTimeLogged = false;
+        }
+        if (CoreServices::getAcquisitionStatus()) // && !CoreServices::getRecordingStatus())
+        {
+            if (!m_isAcquisitionTimeLogged)
+            {
+                m_startingAcqTimeMillis = Time::currentTimeMillis();
+                m_isAcquisitionTimeLogged = true;
+                std::cout << "Starting Acquisition at Ts: " << m_startingAcqTimeMillis << std::endl;
+                tm->m_messageQueue->clear();
+                CoreServices::sendStatusMessage("Clearing queue before start acquisition");
+            }
+
+            m_positionIsUpdated = true;
+
+            int64 ts = CoreServices::getSoftwareTimestamp();
+
+            TrackingData outputMessage = message;
+            outputMessage.timestamp = ts;
+            tm->m_messageQueue->push(outputMessage);
+            m_received_msg++;
+        }
+        else
+            m_isAcquisitionTimeLogged = false;
+        lock.exit();
     }
 }
 
@@ -474,11 +489,10 @@ TrackingServer::TrackingServer(String port, String address)
 
 TrackingServer::~TrackingServer()
 {
-    cout << "Destructing tracking server" << endl;
     // stop the OSC Listener thread running
-    //    m_listeningSocket->Break();
-    // allow the thread 2 seconds to stop cleanly - should be plenty of time.
-    cout << "Destructed tracking server" << endl;
+    stop();
+    stopThread(1000);
+	waitForThreadToExit(2000);
     delete m_listeningSocket;
 }
 
@@ -520,8 +534,6 @@ void TrackingServer::ProcessMessage(const osc::ReceivedMessage &receivedMessage,
 
         for (TrackingNode *processor : m_processors)
         {
-            //            String address = processor->address();
-
             if (std::strcmp(receivedMessage.AddressPattern(), m_address.toStdString().c_str()) != 0)
             {
                 continue;
@@ -550,6 +562,7 @@ void TrackingServer::removeProcessor(TrackingNode *processor)
 
 void TrackingServer::run()
 {
+    std::cout << "TRACKINGSERVER RUN" << std::endl;
     std::cout << "Sleeping!" << endl;
     sleep(1000);
     std::cout << "Running!" << endl;

@@ -83,9 +83,9 @@ void TrackingNodeEditor::buttonClicked(Button *btn)
         CategoricalParameter *cparam = (CategoricalParameter *)param;
         auto oldSources = cparam->getCategories();
         auto str = cparam->getValueAsString();
+        processor->removeModule(str);
         oldSources.removeString(str);
         cparam->setCategories(oldSources);
-        processor->removeModule(str);
         updateView();
     }
 }

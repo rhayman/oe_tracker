@@ -170,18 +170,8 @@ public:
 	{
 		createMetaValues();
 	}
-	~TrackingModule()
-	{
-		// if (m_server)
-		// {
-			// m_server->stop();
-			// LOGD("Stopping thread");
-			// m_server->stopThread(-1);
-			// LOGD("Waiting for exit");
-			// m_server->waitForThreadToExit(-1);
-		// }
-	}
-	TTLEventPtr createEvent(int64 sample_number);
+	~TrackingModule() {}
+	// TTLEventPtr createEvent(int64 sample_number);
 	bool alreadyExists(const String &name)
 	{
 		return m_name == name;
@@ -210,9 +200,23 @@ class TrackingNodeSettings
 {
 private:
 public:
-	TrackingNodeSettings(){};
+	TrackingNodeSettings(){
+		meta_name = std::make_unique<MetadataValue>(desc_name);
+		meta_port = std::make_unique<MetadataValue>(desc_port);
+		meta_address = std::make_unique<MetadataValue>(desc_address);
+		meta_color = std::make_unique<MetadataValue>(desc_color);
+		meta_position = std::make_unique<MetadataValue>(desc_position);
+	};
 	void addModule(String name, TrackingNode *node);
 	void updateModule(String name, Parameter *param);
+	TTLEventPtr createEvent(int sample_number, TrackingData * pos);
+	
+	MetadataValueArray m_metadata;
+	std::unique_ptr<MetadataValue> meta_port;
+	std::unique_ptr<MetadataValue> meta_name;
+	std::unique_ptr<MetadataValue> meta_address;
+	std::unique_ptr<MetadataValue> meta_color;
+	std::unique_ptr<MetadataValue> meta_position;
 	EventChannel *eventChannel;
 };
 
