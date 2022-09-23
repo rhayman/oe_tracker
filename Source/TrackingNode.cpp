@@ -77,7 +77,7 @@ void TrackingModule::createMetaValues()
     meta_address = std::make_unique<MetadataValue>(desc_address);
     meta_color = std::make_unique<MetadataValue>(desc_color);
     meta_position = std::make_unique<MetadataValue>(desc_position);
-}
+};
 
 // TTLEventPtr TrackingModule::createEvent(int64 sample_number)
 // {
@@ -187,7 +187,7 @@ void TrackingNode::addModule(String moduleName)
         MetadataValue name{desc_name};
         name.setValue(moduleName);
         stream->addMetadata(desc_name, name);
-        
+
         stream->addProcessor(processorInfo.get());
 
         EventChannel *events;
@@ -279,6 +279,9 @@ void TrackingNode::removeModule(String moduleName)
         {
             if (tm->alreadyExists(moduleName))
             {
+                tm->m_server->stop();
+                tm->m_server->stopThread(-1);
+                tm->m_server->waitForThreadToExit(-1);
                 for (auto stream : getDataStreams())
                 {
                     for (auto chan : getEventChannels())
