@@ -146,10 +146,11 @@ class TrackingModule
 public:
 	TrackingModule() {}
 	TrackingModule(String port, String address, String color, TrackingNode *processor)
-		: m_messageQueue(std::make_unique<TrackingQueue>()), m_server(std::make_unique<TrackingServer>(port, address)) {
-			m_server->addProcessor(processor);
-			m_server->startThread();
-		}
+		: m_messageQueue(std::make_unique<TrackingQueue>()), m_server(std::make_unique<TrackingServer>(port, address))
+	{
+		m_server->addProcessor(processor);
+		m_server->startThread();
+	}
 	~TrackingModule() {}
 	std::unique_ptr<TrackingQueue> m_messageQueue = nullptr;
 	std::unique_ptr<TrackingServer> m_server = nullptr;
@@ -160,7 +161,8 @@ class TrackingNodeSettings
 {
 private:
 public:
-	TrackingNodeSettings(){
+	TrackingNodeSettings()
+	{
 		meta_name = std::make_unique<MetadataValue>(desc_name);
 		meta_port = std::make_unique<MetadataValue>(desc_port);
 		meta_address = std::make_unique<MetadataValue>(desc_address);
@@ -168,7 +170,7 @@ public:
 		meta_position = std::make_unique<MetadataValue>(desc_position);
 	};
 	TTLEventPtr createEvent(int sample_number);
-	friend std::ostream & operator<<(std::ostream&, const TrackingNodeSettings &);
+	friend std::ostream &operator<<(std::ostream &, const TrackingNodeSettings &);
 
 	String m_name;
 	String m_port = String(DEF_PORT);
@@ -180,7 +182,7 @@ public:
 	std::unique_ptr<MetadataValue> meta_address;
 	std::unique_ptr<MetadataValue> meta_color;
 	std::unique_ptr<MetadataValue> meta_position;
-	std::shared_ptr<TrackingModule> tracker;
+	std::unique_ptr<TrackingModule> tracker;
 	EventChannel *eventChannel;
 };
 
@@ -217,11 +219,11 @@ public:
 
 	void addModule(String moduleName);
 
-	void removeModule(const String & moduleName);
+	void removeModule(const String &moduleName);
 
 	void parameterValueChanged(Parameter *param) override;
 
-	String TrackingNode::getParameterValue(Parameter *);
+	String getParameterValue(Parameter *);
 
 	bool startAcquisition() override;
 
