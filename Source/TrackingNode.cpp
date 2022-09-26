@@ -413,35 +413,36 @@ void TrackingNode::receiveMessage(int port, String address, const TrackingData &
     }
 }
 
+// TODO: Both I/O methods need finishing
 void TrackingNode::saveCustomParametersToXml(XmlElement *parentElement)
 {
-    // for (auto stream : getDataStreams())
-    // {
-    //     XmlElement *mainNode = parentElement->createNewChildElement("TrackingNode");
-    //     if ((*stream)["enable_stream"])
-    //     {
-    //         for (auto &module : trackingModules)
-    //         {
-
-    //             XmlElement *source = new XmlElement(module->m_name);
-    //             source->setAttribute("Port", module->m_port);
-    //             source->setAttribute("Address", module->m_address);
-    //             source->setAttribute("Color", module->m_color);
-    //         }
-    //     }
-    // }
+    for (auto stream : getDataStreams())
+    {
+        auto * moduleXml = parentElement->createNewChildElement("Tracking_Node");
+        TrackingNodeSettings *module = settings[stream->getStreamId()];
+        String val;
+        module->meta_name->getValue(val);
+        moduleXml->setAttribute("Name", val);
+        module->meta_port->getValue(val);
+        moduleXml->setAttribute("Port", val);
+        module->meta_address->getValue(val);
+        moduleXml->setAttribute("Address", val);
+        module->meta_color->getValue(val);
+        moduleXml->setAttribute("Color", val);
+    }
 }
 
 void TrackingNode::loadCustomParametersFromXml(XmlElement *xml)
 {
-    // int streamIndex = 0;
-    // Array<const DataStream *> availableStreams = getDataStreams();
-    // for (auto *streamParams : xml->getChildIterator())
-    // {
-    //     if (streamParams->hasTagName("TrackingNode"))
-    //     {
-    //     }
-    // }
+    auto availableStreams = getDataStreams();
+    for (auto * moduleXml : xml->getChildIterator()) {
+        if (moduleXml->hasTagName("Tracking_Node")) {
+            String name = moduleXml->getStringAttribute("Name");
+            String address = moduleXml->getStringAttribute("Address");
+            String port = moduleXml->getStringAttribute("Port");
+            String color = moduleXml->getStringAttribute("Color");
+        }
+    }
 }
 
 // Class TrackingQueue methods
