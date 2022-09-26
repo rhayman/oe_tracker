@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <ProcessorHeaders.h>
 #include "TrackingMessage.h"
+#include "../../../plugin-GUI/Source/Utils/Utils.h"
 
 #include "oscpack/osc/OscOutboundPacketStream.h"
 #include "oscpack/ip/IpEndpointName.h"
@@ -143,56 +144,15 @@ private:
 class TrackingModule
 {
 public:
-	TrackingModule() { createMetaValues(); }
-	TrackingModule(String name, TrackingNode *processor)
-		: m_name(name), m_messageQueue(std::make_unique<TrackingQueue>()), m_server(std::make_unique<TrackingServer>(m_port, m_address))
-	{
-		createMetaValues();
-		m_server->addProcessor(processor);
-		m_server->startThread();
-	}
-	TrackingModule(String name, String port, TrackingNode *processor)
-		: m_name(name), m_port(port), m_messageQueue(std::make_unique<TrackingQueue>()), m_server(std::make_unique<TrackingServer>(m_port, m_address))
-	{
-		createMetaValues();
-		m_server->addProcessor(processor);
-		m_server->startThread();
-	}
-	TrackingModule(String name, String port, String address, String color, TrackingNode *processor)
-		: m_name(name), m_port(port), m_address(address), m_color(color), m_messageQueue(std::make_unique<TrackingQueue>()), m_server(std::make_unique<TrackingServer>(port, address))
-	{
-		createMetaValues();
-		m_server->addProcessor(processor);
-		m_server->startThread();
-	}
-	TrackingModule(TrackingNode *processor)
-		: m_name(""), m_port(""), m_address(""), m_color(""), m_messageQueue(std::make_unique<TrackingQueue>()), m_server(std::make_unique<TrackingServer>())
-	{
-		createMetaValues();
-	}
+	TrackingModule() {}
+	TrackingModule(String port, String address, String color, TrackingNode *processor)
+		: m_messageQueue(std::make_unique<TrackingQueue>()), m_server(std::make_unique<TrackingServer>(port, address)) {
+			m_server->addProcessor(processor);
+			m_server->startThread();
+		}
 	~TrackingModule() {}
-	// TTLEventPtr createEvent(int64 sample_number);
-	bool alreadyExists(const String &name)
-	{
-		return m_name == name;
-	};
-	friend std::ostream &operator<<(std::ostream &stream, const TrackingModule &module);
-	void createMetaValues();
-	String m_name;
-	String m_port = "27020";
-	String m_address = "/red";
-	String m_color = "red";
-	// Metadata for attaching to TTL events
-	std::unique_ptr<MetadataValue> meta_port;
-	std::unique_ptr<MetadataValue> meta_name;
-	std::unique_ptr<MetadataValue> meta_address;
-	std::unique_ptr<MetadataValue> meta_color;
-	std::unique_ptr<MetadataValue> meta_position;
-
 	std::unique_ptr<TrackingQueue> m_messageQueue = nullptr;
 	std::unique_ptr<TrackingServer> m_server = nullptr;
-	MetadataValueArray m_metadata;
-	EventChannel *eventChannel;
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackingModule);
 };
 
@@ -207,16 +167,20 @@ public:
 		meta_color = std::make_unique<MetadataValue>(desc_color);
 		meta_position = std::make_unique<MetadataValue>(desc_position);
 	};
-	void addModule(String name, TrackingNode *node);
-	void updateModule(String name, Parameter *param);
-	TTLEventPtr createEvent(int sample_number, TrackingData * pos);
-	
+	TTLEventPtr createEvent(int sample_number);
+	friend std::ostream & operator<<(std::ostream&, const TrackingNodeSettings &);
+
+	String m_name;
+	String m_port = String(DEF_PORT);
+	String m_address = String(DEF_ADDRESS);
+	String m_color = String(DEF_COLOR);
 	MetadataValueArray m_metadata;
 	std::unique_ptr<MetadataValue> meta_port;
 	std::unique_ptr<MetadataValue> meta_name;
 	std::unique_ptr<MetadataValue> meta_address;
 	std::unique_ptr<MetadataValue> meta_color;
 	std::unique_ptr<MetadataValue> meta_position;
+	std::shared_ptr<TrackingModule> tracker;
 	EventChannel *eventChannel;
 };
 
@@ -237,7 +201,6 @@ private:
 
 	StreamSettings<TrackingNodeSettings> settings;
 
-	OwnedArray<TrackingModule> trackingModules;
 	StringArray sourceNames;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackingNode);
@@ -247,20 +210,22 @@ public:
 	TrackingNode();
 
 	/** The class destructor, used to deallocate memory */
-	~TrackingNode();
+	~TrackingNode() {}
 
 	/** If the processor has a custom editor, this method must be defined to instantiate it. */
 	AudioProcessorEditor *createEditor() override;
 
 	void addModule(String moduleName);
 
-	void updateModule(String moduleName, Parameter *param);
+	void removeModule(const String & moduleName);
 
-	void removeModule(String moduleName);
+	void parameterValueChanged(Parameter *param) override;
 
-	TrackingModule *getModule(const String &name);
+	String TrackingNode::getParameterValue(Parameter *);
 
-	void parameterValueChanged(Parameter *param);
+	bool startAcquisition() override;
+
+	bool stopAcquisition() override;
 
 	const String getSelectedSourceName();
 

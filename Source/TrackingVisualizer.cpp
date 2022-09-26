@@ -59,6 +59,7 @@ void TrackingVisualizer::updateSettings()
     {
         if (stream->getName().equalsIgnoreCase("TrackingNode datastream"))
         {
+            LOGD("Got TrackingNode datastream");
             auto evtChans = stream->getEventChannels();
             for (auto chan : evtChans)
             {
@@ -66,11 +67,13 @@ void TrackingVisualizer::updateSettings()
                 auto val = chan->getMetadataValue(idx);
                 String name;
                 val->getValue(name);
+                LOGD("Got name: ", name);
 
                 idx = chan->findMetadata(desc_color.getType(), desc_color.getLength(), desc_color.getIdentifier());
                 val = chan->getMetadataValue(idx);
                 String color;
                 val->getValue(color);
+                LOGD("Got color: ", color);
 
                 s.eventIndex = chan->getLocalIndex();
                 s.sourceId = chan->getNodeId();
