@@ -54,40 +54,40 @@ inline StringArray colors = {"red",
 							 "violet",
 							 "yellow"};
 
-const MetadataDescriptor desc_name = MetadataDescriptor(
+const MetadataDescriptor desc_name{
 	MetadataDescriptor::MetadataType::CHAR,
 	64,
 	"Source name",
 	"Tracking source name",
-	"external.tracking.name");
+	"external.tracking.name"};
 
-const MetadataDescriptor desc_port = MetadataDescriptor(
+const MetadataDescriptor desc_port{
 	MetadataDescriptor::MetadataType::CHAR,
 	16,
 	"Source port",
 	"Tracking source port",
-	"external.tracking.port");
+	"external.tracking.port"};
 
-const MetadataDescriptor desc_address = MetadataDescriptor(
+const MetadataDescriptor desc_address{
 	MetadataDescriptor::MetadataType::CHAR,
 	16,
 	"Source address",
 	"Tracking source address",
-	"external.tracking.address");
+	"external.tracking.address"};
 
-const MetadataDescriptor desc_position = MetadataDescriptor(
+const MetadataDescriptor desc_position{
 	MetadataDescriptor::MetadataType::FLOAT,
 	4,
 	"Source position",
 	"Tracking  position",
-	"external.tracking.position");
+	"external.tracking.position"};
 
-const MetadataDescriptor desc_color = MetadataDescriptor(
+const MetadataDescriptor desc_color{
 	MetadataDescriptor::MetadataType::CHAR,
 	16,
 	"Source color",
 	"Tracking source color",
-	"external.tracking.color");
+	"external.tracking.color"};
 
 //	This helper class allows stores input tracking data in a circular queue.
 class TrackingQueue
@@ -146,14 +146,20 @@ class TrackingModule
 public:
 	TrackingModule() {}
 	TrackingModule(String port, String address, String color, TrackingNode *processor)
-		: m_messageQueue(std::make_unique<TrackingQueue>()), m_server(std::make_unique<TrackingServer>(port, address))
+		: m_port(port), m_address(address), m_color(color), m_messageQueue(std::make_unique<TrackingQueue>()), m_server(std::make_unique<TrackingServer>(port, address))
 	{
 		m_server->addProcessor(processor);
 		m_server->startThread();
 	}
 	~TrackingModule() {}
+	friend std::ostream &operator<<(std::ostream &, const TrackingModule &);
+	String m_name;
+	String m_port = String(DEF_PORT);
+	String m_address = String(DEF_ADDRESS);
+	String m_color = String(DEF_COLOR);
 	std::unique_ptr<TrackingQueue> m_messageQueue = nullptr;
 	std::unique_ptr<TrackingServer> m_server = nullptr;
+	EventChannel *eventChannel;
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackingModule);
 };
 
@@ -163,27 +169,13 @@ private:
 public:
 	TrackingNodeSettings()
 	{
-		meta_name = std::make_unique<MetadataValue>(desc_name);
-		meta_port = std::make_unique<MetadataValue>(desc_port);
-		meta_address = std::make_unique<MetadataValue>(desc_address);
-		meta_color = std::make_unique<MetadataValue>(desc_color);
-		meta_position = std::make_unique<MetadataValue>(desc_position);
 	};
-	TTLEventPtr createEvent(int sample_number);
-	friend std::ostream &operator<<(std::ostream &, const TrackingNodeSettings &);
+	TTLEventPtr createEvent(int64 sample_number, TrackingModule *);
 
-	String m_name;
-	String m_port = String(DEF_PORT);
-	String m_address = String(DEF_ADDRESS);
-	String m_color = String(DEF_COLOR);
 	MetadataValueArray m_metadata;
-	std::unique_ptr<MetadataValue> meta_port;
-	std::unique_ptr<MetadataValue> meta_name;
-	std::unique_ptr<MetadataValue> meta_address;
-	std::unique_ptr<MetadataValue> meta_color;
-	std::unique_ptr<MetadataValue> meta_position;
-	std::unique_ptr<TrackingModule> tracker;
-	EventChannel *eventChannel;
+	MetadataValue* meta_position;
+	// EventChannel *eventChannel;
+	Array<TrackingModule*> trackers;
 };
 
 class TrackingNode : public GenericProcessor
@@ -203,7 +195,11 @@ private:
 
 	StreamSettings<TrackingNodeSettings> settings;
 
-	StringArray sourceNames;
+	MetadataValueArray m_metadata;
+	MetadataValue* meta_port;
+	MetadataValue* meta_name;
+	MetadataValue* meta_address;
+	MetadataValue* meta_color;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackingNode);
 
@@ -217,19 +213,15 @@ public:
 	/** If the processor has a custom editor, this method must be defined to instantiate it. */
 	AudioProcessorEditor *createEditor() override;
 
-	void addModule(String moduleName);
+	void initialize();
 
-	void removeModule(const String &moduleName);
+	void addTracker(String moduleName);
+
+	void removeTracker(const String &moduleName);
 
 	void parameterValueChanged(Parameter *param) override;
 
 	String getParameterValue(Parameter *);
-
-	bool startAcquisition() override;
-
-	bool stopAcquisition() override;
-
-	const String getSelectedSourceName();
 
 	/** Called every time the settings of an upstream plugin are changed.
 		Allows the processor to handle variations in the channel configuration or any other parameter
@@ -242,11 +234,6 @@ public:
 		Visualizer plugins typically use this method to send data to the canvas for display purposes */
 	void process(AudioBuffer<float> &buffer) override;
 
-	/** Handles events received by the processor
-		Called automatically for each received event whenever checkForEvents() is called from
-		the plugin's process() method */
-	void handleTTLEvent(TTLEventPtr event) override;
-
 	/** Saving custom settings to XML. This method is not needed to save the state of
 		Parameter objects */
 	void saveCustomParametersToXml(XmlElement *parentElement) override;
@@ -258,12 +245,8 @@ public:
 	// TODO: CLEAN THIS
 	void receiveMessage(int port, String address, const TrackingData &message);
 	int getTrackingModuleIndex(String name, int port, String address);
-	void addSource(int port, String address, String color, uint16 currentStream);
-	void addSource(uint16 currentStream);
-	void removeSource(String name);
 
 	int getNSources();
-	bool isPortUsed(int port);
 };
 
 #endif

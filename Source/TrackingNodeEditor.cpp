@@ -73,7 +73,7 @@ void TrackingNodeEditor::buttonClicked(Button *btn)
         StringArray newSources{oldSources};
         newSources.add(txt);
         cparam->setCategories(newSources);
-        processor->addModule(txt);
+        processor->addTracker(txt);
         updateView();
     }
     if (btn == minusButton.get())
@@ -83,7 +83,7 @@ void TrackingNodeEditor::buttonClicked(Button *btn)
         CategoricalParameter *cparam = (CategoricalParameter *)param;
         auto oldSources = cparam->getCategories();
         auto str = cparam->getValueAsString();
-        processor->removeModule(str);
+        processor->removeTracker(str);
         oldSources.removeString(str);
         cparam->setCategories(oldSources);
         updateView();

@@ -37,7 +37,7 @@
 TrackingVisualizer::TrackingVisualizer()
     : GenericProcessor("Tracking Visual"), m_positionIsUpdated(false), m_clearTracking(false), m_isRecording(false), m_colorUpdated(false)
 {
-    LOGD("[open-ephys][debug] ", "Created visualizer");
+    LOGD("Created visualizer");
 }
 
 TrackingVisualizer::~TrackingVisualizer()
@@ -59,7 +59,6 @@ void TrackingVisualizer::updateSettings()
     {
         if (stream->getName().equalsIgnoreCase("TrackingNode datastream"))
         {
-            LOGD("Got TrackingNode datastream");
             auto evtChans = stream->getEventChannels();
             for (auto chan : evtChans)
             {
@@ -67,13 +66,11 @@ void TrackingVisualizer::updateSettings()
                 auto val = chan->getMetadataValue(idx);
                 String name;
                 val->getValue(name);
-                LOGD("Got name: ", name);
 
                 idx = chan->findMetadata(desc_color.getType(), desc_color.getLength(), desc_color.getIdentifier());
                 val = chan->getMetadataValue(idx);
                 String color;
                 val->getValue(color);
-                LOGD("Got color: ", color);
 
                 s.eventIndex = chan->getLocalIndex();
                 s.sourceId = chan->getNodeId();
@@ -89,8 +86,6 @@ void TrackingVisualizer::updateSettings()
         }
     }
     isEnabled = true;
-    std::cout << "getDataStreams().size(): " << getDataStreams().size() << std::endl;
-    std::cout << "sources.size(): " << sources.size() << std::endl;
 }
 
 void TrackingVisualizer::process(AudioSampleBuffer &)
@@ -104,7 +99,6 @@ void TrackingVisualizer::process(AudioSampleBuffer &)
         m_isRecording = false;
         m_clearTracking = false;
     }
-    std::cout << "process: sources.size(): " << sources.size() << std::endl;
 }
 
 void TrackingVisualizer::handleTTLEvent(TTLEventPtr event_ptr)
