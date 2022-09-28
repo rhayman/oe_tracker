@@ -72,11 +72,11 @@ public:
     virtual void buttonClicked(Button* button);
 
     // Visualizer interface
-    virtual void refreshState();
-    virtual void update();
-    virtual void refresh();
-    virtual void beginAnimation();
-    virtual void endAnimation();
+    virtual void refreshState() override;
+    virtual void update() override;
+    virtual void refresh() override;
+    virtual void beginAnimation() override;
+    virtual void endAnimation() override;
     virtual void setParameter(int, float);
     virtual void setParameter(int, int, int, float);
 

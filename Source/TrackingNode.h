@@ -54,40 +54,40 @@ inline StringArray colors = {"red",
 							 "violet",
 							 "yellow"};
 
-const MetadataDescriptor desc_name{
+auto const desc_name = std::make_unique<MetadataDescriptor>(
 	MetadataDescriptor::MetadataType::CHAR,
 	64,
 	"Source name",
 	"Tracking source name",
-	"external.tracking.name"};
+	"external.tracking.name");
 
-const MetadataDescriptor desc_port{
+auto const desc_port = std::make_unique<MetadataDescriptor>(
 	MetadataDescriptor::MetadataType::CHAR,
 	16,
 	"Source port",
 	"Tracking source port",
-	"external.tracking.port"};
+	"external.tracking.port");
 
-const MetadataDescriptor desc_address{
+auto const desc_address = std::make_unique<MetadataDescriptor>(
 	MetadataDescriptor::MetadataType::CHAR,
 	16,
 	"Source address",
 	"Tracking source address",
-	"external.tracking.address"};
+	"external.tracking.address");
 
-const MetadataDescriptor desc_position{
+auto const desc_position = std::make_unique<MetadataDescriptor>(
 	MetadataDescriptor::MetadataType::FLOAT,
 	4,
 	"Source position",
 	"Tracking  position",
-	"external.tracking.position"};
+	"external.tracking.position");
 
-const MetadataDescriptor desc_color{
+auto const desc_color = std::make_unique<MetadataDescriptor>(
 	MetadataDescriptor::MetadataType::CHAR,
 	16,
 	"Source color",
 	"Tracking source color",
-	"external.tracking.color"};
+	"external.tracking.color");
 
 //	This helper class allows stores input tracking data in a circular queue.
 class TrackingQueue
@@ -169,12 +169,11 @@ private:
 public:
 	TrackingNodeSettings()
 	{
+		meta_position = std::make_unique<MetadataValue>(*desc_position);
 	};
 	TTLEventPtr createEvent(int64 sample_number, TrackingModule *);
 
-	MetadataValueArray m_metadata;
-	MetadataValue* meta_position;
-	// EventChannel *eventChannel;
+	std::unique_ptr<MetadataValue> meta_position = nullptr;
 	Array<TrackingModule*> trackers;
 };
 
@@ -191,11 +190,10 @@ private:
 	bool m_isAcquisitionTimeLogged;
 	int m_received_msg;
 
-	int lastNumInputs;
-
 	StreamSettings<TrackingNodeSettings> settings;
 
 	MetadataValueArray m_metadata;
+	MetadataValue* meta_position;
 	MetadataValue* meta_port;
 	MetadataValue* meta_name;
 	MetadataValue* meta_address;
@@ -215,7 +213,7 @@ public:
 
 	void initialize();
 
-	void addTracker(String moduleName);
+	void addTracker(String moduleName, String port="", String address="", String color="");
 
 	void removeTracker(const String &moduleName);
 
@@ -242,11 +240,8 @@ public:
 		Parameter objects*/
 	void loadCustomParametersFromXml(XmlElement *parentElement) override;
 
-	// TODO: CLEAN THIS
+	// receives a message from the osc server
 	void receiveMessage(int port, String address, const TrackingData &message);
-	int getTrackingModuleIndex(String name, int port, String address);
-
-	int getNSources();
 };
 
 #endif

@@ -63,6 +63,15 @@ struct TrackingSources
     float height;
     String name;
     String color;
+    friend std::ostream &operator<<(std::ostream &stream, const TrackingSources &ts){
+        stream << "name: " << ts.name << std::endl;
+        stream << "color: " << ts.color << std::endl;
+        stream << "x: " << ts.x_pos << std::endl;
+        stream << "y: " << ts.y_pos << std::endl;
+        stream << "width: " << ts.width << std::endl;
+        stream << "height: " << ts.height << std::endl;
+        return stream;
+    };
 };
 
 #endif // TRACKINGDATA_H
