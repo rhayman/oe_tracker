@@ -130,12 +130,9 @@ void TrackingVisualizer::handleTTLEvent(TTLEventPtr event_ptr)
                         source.width = position[3];
                         source.height = position[2];
                     }
-                    auto nevents = event_ptr->getMetadataValueCount();
-                    LOGD("nEvents: ", nevents);
                     auto col = event_ptr->getMetadataValue(2);
                     String sourceColor;
                     col->getValue(sourceColor);
-                    LOGD("sourceColor: ", sourceColor);
 
                     if (source.color.compare(sourceColor) != 0)
                     {

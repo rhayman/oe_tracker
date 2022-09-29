@@ -32,7 +32,6 @@
 #include "TrackingVisualizerCanvas.h"
 #include "TrackingVisualizer.h"
 
-#include "../../../plugin-GUI/Source/Utils/Utils.h"
 #include <math.h>
 #include <string>
 
@@ -130,8 +129,6 @@ void TrackingVisualizerCanvas::paint (Graphics& g)
             processor->setColorIsUpdated(false);
         }
 
-        std::cout << "canvas source: " << source << std::endl;
-
         // Plot trajectory as lines
         if (m_positions[i].size () >= 2 && source_active)
         {
@@ -228,7 +225,6 @@ void TrackingVisualizerCanvas::refresh()
 
 void TrackingVisualizerCanvas::beginAnimation()
 {
-    LOGD("beginAnimation called");
     startCallbacks();
 }
 
