@@ -321,32 +321,31 @@ void TrackingNode::receiveMessage(int port, String address, const TrackingData &
 // TODO: Both I/O methods need finishing
 void TrackingNode::saveCustomParametersToXml(XmlElement *parentElement)
 {
-    for (auto stream : getDataStreams())
-    {
-        auto *moduleXml = parentElement->createNewChildElement("Tracking_Node");
-        TrackingNodeSettings *module = settings[stream->getStreamId()];
-        String val;
-        for (auto tracker : module->trackers) {
-            moduleXml->setAttribute("Name", tracker->m_name);
-            moduleXml->setAttribute("Port", tracker->m_port);
-            moduleXml->setAttribute("Address", tracker->m_address);
-        }
-    }
+    // for (auto stream : getDataStreams())
+    // {
+    //     auto *moduleXml = parentElement->createNewChildElement("Tracking_Node");
+    //     TrackingNodeSettings *module = settings[stream->getStreamId()];
+    //     for (auto tracker : module->trackers) {
+    //         moduleXml->setAttribute("Name", tracker->m_name);
+    //         moduleXml->setAttribute("Port", tracker->m_port);
+    //         moduleXml->setAttribute("Address", tracker->m_address);
+    //     }
+    // }
 }
 
 void TrackingNode::loadCustomParametersFromXml(XmlElement *xml)
 {
-    for (auto *moduleXml : xml->getChildIterator())
-    {
-        if (moduleXml->hasTagName("Tracking_Node"))
-        {
-            String name = moduleXml->getStringAttribute("Name");
-            String address = moduleXml->getStringAttribute("Address");
-            String port = moduleXml->getStringAttribute("Port");
+    // for (auto *moduleXml : xml->getChildIterator())
+    // {
+    //     if (moduleXml->hasTagName("Tracking_Node"))
+    //     {
+    //         String name = moduleXml->getStringAttribute("Name", "Tracking source 1");
+    //         String address = moduleXml->getStringAttribute("Address", "/red");
+    //         String port = moduleXml->getStringAttribute("Port", "27020");
 
-            addTracker(name, port, address);
-        }
-    }
+    //         addTracker(name, port, address);
+    //     }
+    // }
 }
 
 // Class TrackingQueue methods

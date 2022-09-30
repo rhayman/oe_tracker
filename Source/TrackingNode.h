@@ -197,7 +197,6 @@ private:
 	MetadataValue* meta_port;
 	MetadataValue* meta_name;
 	MetadataValue* meta_address;
-	MetadataValue* meta_color;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackingNode);
 
