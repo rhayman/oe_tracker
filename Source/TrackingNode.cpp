@@ -43,15 +43,12 @@ TTLEventPtr TrackingNodeSettings::createEvent(int64 sample_number, TrackingModul
     MetadataValuePtr p_pos = new MetadataValue(*desc_position);
     MetadataValuePtr p_port = new MetadataValue(*desc_port);
     MetadataValuePtr p_addr = new MetadataValue(*desc_address);
-    MetadataValuePtr p_color = new MetadataValue(*desc_color);
     p_pos->setValue(pos);
     p_port->setValue(tracker->m_port);
     p_addr->setValue(tracker->m_address);
-    p_color->setValue(tracker->m_color);
     MetadataValueArray metadata;
     metadata.add(p_pos);
     metadata.add(p_port);
-    metadata.add(p_color);
     metadata.add(p_addr);
     TTLEventPtr event = TTLEvent::createTTLEvent(tracker->eventChannel,
                                                  sample_number,
@@ -67,19 +64,15 @@ operator<<(std::ostream &stream, const TrackingModule &module)
     stream << "Name: " << module.m_name << std::endl;
     stream << "Address: " << module.m_address << std::endl;
     stream << "Port: " << module.m_port << std::endl;
-    stream << "Colour: " << module.m_color << std::endl;
     return stream;
 }
 
 TrackingNode::TrackingNode()
-    : GenericProcessor("Tracker")
+    : GenericProcessor("OE Tracker")
 {
-    addCategoricalParameter(Parameter::GLOBAL_SCOPE, "Source", "Tracking source", {}, 0);
+    addCategoricalParameter(Parameter::GLOBAL_SCOPE, "Name", "Tracking source", {}, 0);
     addStringParameter(Parameter::GLOBAL_SCOPE, "Port", "Tracking source OSC port", "27020");
     addStringParameter(Parameter::GLOBAL_SCOPE, "Address", "Tracking source OSC address", "/red");
-    addCategoricalParameter(Parameter::GLOBAL_SCOPE, "Color", "Tracking source color to be displayed",
-                            colors,
-                            0);
     m_positionIsUpdated = false;
     m_isRecordingTimeLogged = false;
     m_isAcquisitionTimeLogged = false;
@@ -94,12 +87,7 @@ AudioProcessorEditor *TrackingNode::createEditor()
 String TrackingNode::getParameterValue(Parameter *param)
 {
     String val;
-    if (param->getName().equalsIgnoreCase("color"))
-    {
-        CategoricalParameter *cparam = (CategoricalParameter *)param;
-        val = cparam->getSelectedString();
-    }
-    else if (param->getName().equalsIgnoreCase("port"))
+    if (param->getName().equalsIgnoreCase("port"))
     {
         val = param->getValueAsString();
     }
@@ -107,7 +95,7 @@ String TrackingNode::getParameterValue(Parameter *param)
     {
         val = param->getValueAsString();
     }
-    else if (param->getName().equalsIgnoreCase("source"))
+    else if (param->getName().equalsIgnoreCase("name"))
     {
         CategoricalParameter *cparam = (CategoricalParameter *)param;
         val = cparam->getSelectedString();
@@ -175,8 +163,6 @@ void TrackingNode::addTracker(String moduleName, String port, String address, St
             meta_port->setValue(port_name);
             meta_address = new MetadataValue(*desc_address);
             meta_address->setValue(address);
-            meta_color = new MetadataValue(*desc_color);
-            meta_color->setValue(color);
 
             // add some dummy pos data for now
             Array<float> pos;
@@ -190,10 +176,8 @@ void TrackingNode::addTracker(String moduleName, String port, String address, St
             events->addMetadata(desc_name.get(), meta_name);
             events->addMetadata(desc_address.get(), meta_address);
             events->addMetadata(desc_port.get(), meta_port);
-            events->addMetadata(desc_color.get(), meta_color);
             events->addEventMetadata(*desc_position);
             events->addEventMetadata(*desc_port);
-            events->addEventMetadata(*desc_color);
             events->addEventMetadata(*desc_address);
             eventChannels.add(events);
             tm->eventChannel = events;
@@ -223,18 +207,13 @@ void TrackingNode::parameterValueChanged(Parameter *param)
 {
     if (getDataStreams().isEmpty())
         return;
-    auto src_name = getParameterValue(getParameter("Source"));
+    auto src_name = getParameterValue(getParameter("Name"));
     for (auto stream : getDataStreams()) {
         if (stream->getName().equalsIgnoreCase("TrackingNode datastream")) {
             auto trackers = settings[stream->getStreamId()]->trackers;
             for (auto tracker : trackers) {
                 if (tracker->m_name == src_name) {
-                    if (param->getName().equalsIgnoreCase("color"))
-                    {
-                        auto new_color = getParameterValue(param);
-                        tracker->m_color = new_color;
-                    }
-                    else if (param->getName().equalsIgnoreCase("port"))
+                    if (param->getName().equalsIgnoreCase("port"))
                     {
                         auto new_port = getParameterValue(param);
                         tracker->m_port = new_port;
@@ -244,18 +223,14 @@ void TrackingNode::parameterValueChanged(Parameter *param)
                         auto new_address = getParameterValue(param);
                         tracker->m_address = new_address;
                     }
-                    else if (param->getName().equalsIgnoreCase("source"))
+                    else if (param->getName().equalsIgnoreCase("name"))
                     {
                         auto new_name = getParameterValue(param);
                         tracker->m_name = new_name;
                         auto *port = getParameter("Port");
                         auto *address = getParameter("Address");
-                        auto *col = getParameter("Color");
-                        CategoricalParameter *color = (CategoricalParameter *)getParameter("Color");
                         port->currentValue = tracker->m_port;
                         address->currentValue = tracker->m_address;
-                        auto idx = colors.indexOf(tracker->m_color);
-                        color->setNextValue(idx);
                     }
                 }
             }
@@ -355,7 +330,6 @@ void TrackingNode::saveCustomParametersToXml(XmlElement *parentElement)
             moduleXml->setAttribute("Name", tracker->m_name);
             moduleXml->setAttribute("Port", tracker->m_port);
             moduleXml->setAttribute("Address", tracker->m_address);
-            moduleXml->setAttribute("Color", tracker->m_color);
         }
     }
 }
@@ -369,9 +343,8 @@ void TrackingNode::loadCustomParametersFromXml(XmlElement *xml)
             String name = moduleXml->getStringAttribute("Name");
             String address = moduleXml->getStringAttribute("Address");
             String port = moduleXml->getStringAttribute("Port");
-            String color = moduleXml->getStringAttribute("Color");
 
-            addTracker(name, port, address, color);
+            addTracker(name, port, address);
         }
     }
 }

@@ -53,11 +53,11 @@ public:
     AudioProcessorEditor *createEditor();
 
     void process(AudioSampleBuffer &buffer) override;
-    // change this to handleTTLEvent as this is what is raised now in TrackingNode
-    //
-    void handleEvent(const EventChannel *eventInfo, const MidiMessage &event, int);
     void handleTTLEvent(TTLEventPtr) override;
     void updateSettings();
+
+    String getParameterValue(Parameter *);
+    void parameterValueChanged(Parameter *);
 
     float getX(int s) const;
     float getY(int s) const;

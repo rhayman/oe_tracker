@@ -36,6 +36,9 @@
 TrackingVisualizerEditor::TrackingVisualizerEditor(GenericProcessor *parentNode)
     : VisualizerEditor(parentNode, String("Tracking visual"))
 {
+    desiredWidth = 240;
+    addComboBoxParameterEditor("Current", 10, 20);
+    addComboBoxParameterEditor("Path", 150, 20);
 }
 
 TrackingVisualizerEditor::~TrackingVisualizerEditor()
@@ -50,5 +53,4 @@ Visualizer *TrackingVisualizerEditor::createNewCanvas()
 
 void TrackingVisualizerEditor::updateVisualizer()
 {
-    LOGD("update called");
 }

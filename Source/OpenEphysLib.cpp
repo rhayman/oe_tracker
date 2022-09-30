@@ -54,7 +54,7 @@ extern "C" EXPORT int getPluginInfo(int index, Plugin::PluginInfo *info)
 	{
 	case 0:
 		info->type = Plugin::Type::PROCESSOR;
-		info->processor.name = "OE Tracker"; // Processor name shown in the GUI
+		info->processor.name = "Track Position"; // Processor name shown in the GUI
 		info->processor.type = Processor::Type::SOURCE;
 		info->processor.creator = &(Plugin::createProcessor<TrackingNode>);
 		break;

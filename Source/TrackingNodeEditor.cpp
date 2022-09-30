@@ -29,7 +29,7 @@ TrackingNodeEditor::TrackingNodeEditor(GenericProcessor *parentNode)
 {
     desiredWidth = 240;
 
-    addComboBoxParameterEditor("Source", 55, 20);
+    addComboBoxParameterEditor("Name", 55, 20);
 
     plusButton = std::make_unique<UtilityButton>("+", titleFont);
     plusButton->addListener(this);
@@ -45,7 +45,6 @@ TrackingNodeEditor::TrackingNodeEditor(GenericProcessor *parentNode)
 
     addTextBoxParameterEditor("Address", 150, 70);
     addTextBoxParameterEditor("Port", 150, 20);
-    addComboBoxParameterEditor("Color", 15, 70);
 }
 
 void TrackingNodeEditor::buttonClicked(Button *btn)
@@ -54,7 +53,7 @@ void TrackingNodeEditor::buttonClicked(Button *btn)
     {
         // add a tracking source
         TrackingNode *processor = (TrackingNode *)getProcessor();
-        auto param = processor->getParameter("Source");
+        auto param = processor->getParameter("Name");
         CategoricalParameter *cparam = (CategoricalParameter *)param;
         auto oldSources = cparam->getCategories();
         int iSource = 0;
@@ -79,7 +78,7 @@ void TrackingNodeEditor::buttonClicked(Button *btn)
     if (btn == minusButton.get())
     {
         TrackingNode *processor = (TrackingNode *)getProcessor();
-        auto param = processor->getParameter("Source");
+        auto param = processor->getParameter("Name");
         CategoricalParameter *cparam = (CategoricalParameter *)param;
         auto oldSources = cparam->getCategories();
         auto str = cparam->getValueAsString();
@@ -87,14 +86,5 @@ void TrackingNodeEditor::buttonClicked(Button *btn)
         oldSources.removeString(str);
         cparam->setCategories(oldSources);
         updateView();
-    }
-}
-
-void TrackingNodeEditor::updateCustomView()
-{
-    CategoricalParameter *src_param = (CategoricalParameter *)getProcessor()->getParameter("Source");
-    auto src_name = src_param->getSelectedString();
-    for (auto ed : parameterEditors)
-    {
     }
 }

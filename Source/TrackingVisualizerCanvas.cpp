@@ -119,7 +119,7 @@ void TrackingVisualizerCanvas::paint (Graphics& g)
     {
         bool source_active = listbox->isRowSelected(i);
         TrackingSources& source = processor->getTrackingSource(i);
-        Colour source_colour = color_palette[source.color];
+        Colour source_colour = color_palette[source.previous_location_color];
         g.setColour(source_colour);
 
         // update colors
@@ -150,11 +150,13 @@ void TrackingVisualizerCanvas::paint (Graphics& g)
             // Plot current position as ellipse
             if (!m_positions[i].empty ())
             {
+                g.setColour(color_palette[source.current_location_color]);
                 TrackingPosition position = m_positions[i].back();
                 float x = camWidth*position.x + plot_bottom_left_x;
                 float y = camHeight*position.y + plot_bottom_left_y;
                 g.fillEllipse(x - 0.01*getHeight(), y - 0.01*getHeight(), 0.02*getHeight(), 0.02*getHeight());
             }
+            g.setColour(color_palette[source.previous_location_color]);
         }
     }
 }

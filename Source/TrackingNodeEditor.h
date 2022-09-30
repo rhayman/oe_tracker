@@ -40,8 +40,6 @@ public:
 
 	void buttonClicked(Button *button);
 
-	virtual void updateCustomView() override;
-
 private:
 	std::unique_ptr<UtilityButton> plusButton;
 	std::unique_ptr<UtilityButton> minusButton;

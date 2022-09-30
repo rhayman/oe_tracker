@@ -37,7 +37,12 @@
 TrackingVisualizer::TrackingVisualizer()
     : GenericProcessor("Tracking Visual"), m_positionIsUpdated(false), m_clearTracking(false), m_isRecording(false), m_colorUpdated(false)
 {
-    LOGD("Created visualizer");
+    addCategoricalParameter(Parameter::GLOBAL_SCOPE, "Current", "Current location color to be displayed",
+                            colors,
+                            0);
+    addCategoricalParameter(Parameter::GLOBAL_SCOPE, "Path", "Previous location color to be displayed",
+                            colors,
+                            1);
 }
 
 TrackingVisualizer::~TrackingVisualizer()
@@ -50,12 +55,49 @@ AudioProcessorEditor *TrackingVisualizer::createEditor()
     return editor.get();
 }
 
+String TrackingVisualizer::getParameterValue(Parameter *param)
+{
+    String val;
+    if (param->getName().equalsIgnoreCase("Current"))
+    {
+        CategoricalParameter *cparam = (CategoricalParameter *)param;
+        val = cparam->getSelectedString();
+    }
+    else if (param->getName().equalsIgnoreCase("Path"))
+    {
+        CategoricalParameter *cparam = (CategoricalParameter *)param;
+        val = cparam->getValueAsString();
+    }
+    
+    return val;
+}
+
+void TrackingVisualizer::parameterValueChanged(Parameter * param) {
+    if (getDataStreams().isEmpty())
+        return;
+    
+    for (auto stream : getDataStreams()) {
+        if (stream->getName().equalsIgnoreCase("TrackingNode datastream")) {
+            for (auto & source : sources) {
+                if (param->getName().equalsIgnoreCase("current")) {
+                    auto new_color = getParameterValue(param);
+                    source.current_location_color = new_color;
+                    m_colorUpdated = true;
+                }
+                if (param->getName().equalsIgnoreCase("path")) {
+                    auto new_color = getParameterValue(param);
+                    source.previous_location_color = new_color;
+                    m_colorUpdated = true;
+                }
+            }
+        }
+    }
+}
+
 void TrackingVisualizer::updateSettings()
 {
     sources.clear();
     TrackingSources s;
-    LOGD("updating");
-
     for (auto stream : getDataStreams())
     {
         if (stream->getName().equalsIgnoreCase("TrackingNode datastream"))
@@ -68,21 +110,18 @@ void TrackingVisualizer::updateSettings()
                 String name;
                 val->getValue(name);
 
-                idx = chan->findMetadata(desc_color->getType(), desc_color->getLength(), desc_color->getIdentifier());
-                val = chan->getMetadataValue(idx);
-                String color;
-                val->getValue(color);
-
                 s.eventIndex = chan->getLocalIndex();
                 s.sourceId = chan->getNodeId();
+                auto current_col = getParameterValue(getParameter("Current"));
+                auto previous_col = getParameterValue(getParameter("Path"));
                 s.name = name;
-                s.color = color;
+                s.current_location_color = current_col;
+                s.previous_location_color = previous_col;
                 s.x_pos = -1;
                 s.y_pos = -1;
                 s.width = -1;
                 s.height = -1;
                 sources.add(s);
-                m_colorUpdated = true;
             }
         }
     }
@@ -129,15 +168,6 @@ void TrackingVisualizer::handleTTLEvent(TTLEventPtr event_ptr)
                     {
                         source.width = position[3];
                         source.height = position[2];
-                    }
-                    auto col = event_ptr->getMetadataValue(2);
-                    String sourceColor;
-                    col->getValue(sourceColor);
-
-                    if (source.color.compare(sourceColor) != 0)
-                    {
-                        source.color = sourceColor;
-                        m_colorUpdated = true;
                     }
                     m_positionIsUpdated = true;
                 }
