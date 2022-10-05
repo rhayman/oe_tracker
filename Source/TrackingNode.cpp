@@ -32,8 +32,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 TTLEventPtr TrackingNodeSettings::createEvent(int64 sample_number, TrackingModule * tracker)
 {
     auto position = tracker->m_messageQueue->pop();
-    if (!position)
+    if (!position) {
+        LOGC("position message NULL");
         return nullptr;
+    }
+    LOGC("got message");
     Array<float> pos;
     pos.add(position->position.x);
     pos.add(position->position.y);
@@ -50,11 +53,13 @@ TTLEventPtr TrackingNodeSettings::createEvent(int64 sample_number, TrackingModul
     metadata.add(p_pos);
     metadata.add(p_port);
     metadata.add(p_addr);
+    LOGC("Creating TTL event");
     TTLEventPtr event = TTLEvent::createTTLEvent(tracker->eventChannel,
                                                  sample_number,
                                                  0,
                                                  true,
                                                  metadata);
+    LOGC("Created TTL event");
     return event;
 };
 
@@ -108,7 +113,7 @@ void TrackingNode::initialize() {
         DataStream::Settings streamsettings{"TrackingNode datastream",
                                             "Datastream for Tracking data received from Bonsai",
                                             "external.tracking.rawData",
-                                            getDefaultSampleRate()};
+                                            150};
 
         auto stream = new DataStream(streamsettings);
         dataStreams.add(stream);
@@ -248,21 +253,44 @@ void TrackingNode::updateSettings()
 
 void TrackingNode::process(AudioBuffer<float> &buffer)
 {
-    if (!m_positionIsUpdated)
-        return;
-    lock.enter();
+    LOGC("DS num: ", getDataStreams().size());
+    for (auto stream: getDataStreams()) {
+        LOGC("stream id: ", stream->getStreamId());
+        LOGC("settings size: ", settings.size());
+        auto trackers = settings[stream->getStreamId()]->trackers;
+        for (auto tracker : trackers) {
+            LOGC("Q empty?: ", tracker->m_messageQueue->isEmpty());
+        }
+    }
+    // if (!m_positionIsUpdated) {
+    //     LOGC("pos not updated");
+    //     return;
+    // }
+    LOGC("pos updated");
+    
     for (auto stream : getDataStreams())
     {
         if (stream->getName().equalsIgnoreCase("TrackingNode datastream")) {
             auto streamId = stream->getStreamId();
             auto trackers = settings[streamId]->trackers;
             for (auto tracker : trackers) {
-                TTLEventPtr event = settings[streamId]->createEvent(0, tracker);
-                addEvent(event, 0);
+                // if (tracker->m_messageQueue->isEmpty()) {
+                //     lock.exit();
+                //     LOGC("Queue empty returning");
+                //     // return;
+                // }
+                // else {
+                    lock.enter();
+                    LOGC("Raising event");
+                    TTLEventPtr event = settings[streamId]->createEvent(0, tracker);
+                    addEvent(event, 0);
+                    lock.exit();
+                // }
             }
         }
     }
-    lock.exit();
+    // lock.exit();
+    LOGC("setting pos update to false");
     m_positionIsUpdated = false;
 }
 
@@ -271,9 +299,11 @@ void TrackingNode::receiveMessage(int port, String address, const TrackingData &
     for (auto stream : getDataStreams())
     {
         if ( stream->getName().equalsIgnoreCase("TrackingNode datastream")) {
-            lock.enter();
+            
             auto trackers = settings[stream->getStreamId()]->trackers;
+            
             for (auto tracker : trackers) {
+                lock.enter();
                 if (CoreServices::getRecordingStatus())
                 {
                     if (!m_isRecordingTimeLogged)
@@ -300,20 +330,25 @@ void TrackingNode::receiveMessage(int port, String address, const TrackingData &
                         tracker->m_messageQueue->clear();
                         CoreServices::sendStatusMessage("Clearing queue before start acquisition");
                     }
+                    LOGC("m_positionIsUpdated: ", m_positionIsUpdated);
 
-                    m_positionIsUpdated = true;
+                    
 
                     int64 ts = CoreServices::getSoftwareTimestamp();
 
                     TrackingData outputMessage = message;
+                    // std::cout << "outputMessage: " << outputMessage << std::endl;
                     outputMessage.timestamp = ts;
                     tracker->m_messageQueue->push(outputMessage);
+                    LOGC("queue count: ", tracker->m_messageQueue->count());
                     m_received_msg++;
+                    // m_positionIsUpdated = true;
                 }
                 else
                     m_isAcquisitionTimeLogged = false;
+                lock.exit();
             }
-            lock.exit();
+            
         }
     }
 }
@@ -361,6 +396,7 @@ void TrackingQueue::push(const TrackingData &message)
 {
     m_head = (m_head + 1) % BUFFER_SIZE;
     m_buffer[m_head] = message;
+    ++_count;
 }
 
 TrackingData *TrackingQueue::pop()
@@ -369,6 +405,7 @@ TrackingData *TrackingQueue::pop()
         return nullptr;
 
     m_tail = (m_tail + 1) % BUFFER_SIZE;
+    --_count;
     return &(m_buffer[m_tail]);
 }
 
@@ -381,6 +418,10 @@ void TrackingQueue::clear()
 {
     m_tail = -1;
     m_head = -1;
+}
+
+int TrackingQueue::count() {
+    return _count;
 }
 
 // Class TrackingServer methods

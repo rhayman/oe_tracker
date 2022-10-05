@@ -102,10 +102,13 @@ public:
 	bool isEmpty();
 	void clear();
 
+	int count();
+
 private:
 	TrackingData m_buffer[BUFFER_SIZE];
 	int m_head;
 	int m_tail;
+	int _count = 0;
 };
 
 //	This helper class is an OSC server running its own thread to keep data transmission

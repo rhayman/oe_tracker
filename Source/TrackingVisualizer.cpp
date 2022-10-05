@@ -31,6 +31,7 @@
 #include "TrackingNode.h"
 #include "TrackingVisualizer.h"
 #include "TrackingVisualizerEditor.h"
+#include "../../../plugin-GUI/Source/Utils/Utils.h"
 
 #include <algorithm>
 
@@ -146,12 +147,14 @@ void TrackingVisualizer::handleTTLEvent(TTLEventPtr event_ptr)
     DataStream * stream = getDataStream(event_ptr->getStreamId());
     if (stream->getName().equalsIgnoreCase("TrackingNode datastream"))
     {
+            LOGC("got stream");
         auto chan = event_ptr->getChannelInfo();
         auto idx = chan->findMetadata(desc_name->getType(), desc_name->getLength(), desc_name->getIdentifier());
         auto val = chan->getMetadataValue(idx);
         String name;
         val->getValue(name);
         for (auto & source : sources) {
+                LOGC("got source");
             if (name.equalsIgnoreCase(source.name)) {
                 auto nMetas = chan->getMetadataCount();
                 idx = chan->findMetadata(desc_position->getType(), desc_position->getLength(), desc_position->getIdentifier());
@@ -169,6 +172,11 @@ void TrackingVisualizer::handleTTLEvent(TTLEventPtr event_ptr)
                         source.width = position[3];
                         source.height = position[2];
                     }
+                    // BinaryEventPtr evt = BinaryEvent::createBinaryEvent(chan,
+                    //                                                     event_ptr->getSampleNumber(),
+                    //                                                     reinterpret_cast<uint8_t*>(&(position)),
+                    //                                                     sizeof(position));
+                    // addEvent(evt, event_ptr->getSampleNumber());
                     m_positionIsUpdated = true;
                 }
             }
