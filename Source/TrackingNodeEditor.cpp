@@ -69,11 +69,14 @@ void TrackingNodeEditor::buttonClicked(Button *btn)
             iSource = max;
         }
         String txt = "Tracking source " + String(iSource + 1);
+        LOGC("got name: ", txt);
         StringArray newSources{oldSources};
         newSources.add(txt);
         cparam->setCategories(newSources);
+        LOGC("adding tracker");
         processor->addTracker(txt);
         updateView();
+
     }
     if (btn == minusButton.get())
     {

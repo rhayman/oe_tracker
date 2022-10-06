@@ -97,6 +97,7 @@ void TrackingVisualizer::parameterValueChanged(Parameter * param) {
 
 void TrackingVisualizer::updateSettings()
 {
+    LOGC("Visualizer updating");
     sources.clear();
     TrackingSources s;
     for (auto stream : getDataStreams())
@@ -126,6 +127,7 @@ void TrackingVisualizer::updateSettings()
             }
         }
     }
+    LOGC("nSources in visualizer = ", sources.size());
     isEnabled = true;
 }
 
@@ -134,7 +136,8 @@ void TrackingVisualizer::process(AudioSampleBuffer &)
     checkForEvents();
     // Clear tracking when start recording
     if (CoreServices::getRecordingStatus())
-        m_isRecording = true;
+        // m_isRecording = true;
+        int aa = 6;
     else
     {
         m_isRecording = false;
@@ -177,10 +180,11 @@ void TrackingVisualizer::handleTTLEvent(TTLEventPtr event_ptr)
                     //                                                     reinterpret_cast<uint8_t*>(&(position)),
                     //                                                     sizeof(position));
                     // addEvent(evt, event_ptr->getSampleNumber());
-                    m_positionIsUpdated = true;
+                    
                 }
             }
         }
+        m_positionIsUpdated = true;
     }
 }
 

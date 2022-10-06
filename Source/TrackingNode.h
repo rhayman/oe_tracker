@@ -174,10 +174,21 @@ public:
 	{
 		meta_position = std::make_unique<MetadataValue>(*desc_position);
 	};
-	TTLEventPtr createEvent(int64 sample_number, TrackingModule *);
+	TTLEventPtr createEvent(int idx, int64 sample_number);
 
 	std::unique_ptr<MetadataValue> meta_position = nullptr;
-	Array<TrackingModule*> trackers;
+	OwnedArray<TrackingModule> trackers;
+	bool removeTracker(const String & moduleToRemove);
+	int getPort(int idx) { return trackers[idx]->m_port.getIntValue(); }
+	String getName(int idx) { return trackers[idx]->m_name; }
+	String getAddress(int idx) { return trackers[idx]->m_address; }
+	void updateTracker(int idx, Parameter *param, juce::var value);
+	void clearQueue(int idx) {
+		trackers[idx]->m_messageQueue->clear();
+	};
+	void pushMessage(int idx, TrackingData msg) {
+		trackers[idx]->m_messageQueue->push(msg);
+	}
 };
 
 class TrackingNode : public GenericProcessor
@@ -191,6 +202,7 @@ private:
 	bool m_positionIsUpdated;
 	bool m_isRecordingTimeLogged;
 	bool m_isAcquisitionTimeLogged;
+	bool m_isInitialized = false;
 	int m_received_msg;
 
 	StreamSettings<TrackingNodeSettings> settings;

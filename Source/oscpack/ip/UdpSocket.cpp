@@ -497,7 +497,6 @@ public:
             if( resort )
                 std::sort( timerQueue_.begin(), timerQueue_.end(), CompareScheduledTimerCalls );
         }
-        std::cout << "5" << std::endl;
 
         delete [] data;
 
@@ -511,7 +510,6 @@ public:
             unsigned long enableNonblocking = 0;
             ioctlsocket( i->second->impl_->Socket(), FIONBIO, &enableNonblocking );  // make the socket blocking again
         }
-        std::cout << "6" << std::endl;
     }
 
     void Break()

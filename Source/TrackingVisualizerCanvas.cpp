@@ -185,6 +185,7 @@ void TrackingVisualizerCanvas::update()
     Array<String> listboxData;
 
     int nSources = processor->getNSources();
+    LOGC("nSources = ", nSources);
     for (int i = 0; i < nSources; i++)
     {
         TrackingSources& source = processor->getTrackingSource(i);
