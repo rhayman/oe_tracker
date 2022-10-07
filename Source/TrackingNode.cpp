@@ -126,8 +126,9 @@ String TrackingNode::getParameterValue(Parameter *param)
     return val;
 }
 
-void TrackingNode::initialize() {
+void TrackingNode::initialize(bool signalChainIsLoading) {
     if ( getDataStreams().isEmpty() ) {
+        LOGC("initializing");
         DataStream::Settings streamsettings{"TrackingNode datastream",
                                             "Datastream for Tracking data received from Bonsai",
                                             "external.tracking.rawData",
@@ -135,8 +136,10 @@ void TrackingNode::initialize() {
 
         auto stream = new DataStream(streamsettings);
         dataStreams.add(stream);
+        LOGC("Added ds");
+        
         dataStreams.getLast()->addProcessor(processorInfo.get());
-        settings.update(getDataStreams());
+        LOGC("Updated settings");
         m_isInitialized = true;
     }
 }
@@ -212,9 +215,7 @@ void TrackingNode::addTracker(String moduleName, String port, String address, St
             settings[stream->getStreamId()]->trackers.add(tm);
             CoreServices::updateSignalChain(getEditor());
         }
-
     }
-    settings.update(getDataStreams());
 }
 
 void TrackingNode::removeTracker(const String &moduleToRemove)
@@ -257,7 +258,7 @@ void TrackingNode::updateSettings()
     if (!m_isInitialized) {
         dataStreams.clear();
         eventChannels.clear();
-        initialize();
+        initialize(true);
         isEnabled = true;
     }
 }
@@ -434,54 +435,54 @@ TrackingServer::~TrackingServer()
 void TrackingServer::ProcessMessage(const osc::ReceivedMessage &receivedMessage,
                                     const IpEndpointName &)
 {
-    int64 ts = CoreServices::getGlobalTimestamp();
-    try
-    {
-        uint32 argumentCount = 4;
+    // int64 ts = CoreServices::getGlobalTimestamp();
+    // try
+    // {
+    //     uint32 argumentCount = 4;
 
-        if (receivedMessage.ArgumentCount() != argumentCount)
-        {
-            LOGC("ERROR: TrackingServer received message with wrong number of arguments. ",
-                "Expected ", argumentCount, ", got ", receivedMessage.ArgumentCount());
-            return;
-        }
+    //     if (receivedMessage.ArgumentCount() != argumentCount)
+    //     {
+    //         LOGC("ERROR: TrackingServer received message with wrong number of arguments. ",
+    //             "Expected ", argumentCount, ", got ", receivedMessage.ArgumentCount());
+    //         return;
+    //     }
 
-        for (uint32 i = 0; i < receivedMessage.ArgumentCount(); i++)
-        {
-            if (receivedMessage.TypeTags()[i] != 'f')
-            {
-                LOGC("TrackingServer only support 'f' (floats), not '", String(receivedMessage.TypeTags()[i]));
-                return;
-            }
-        }
+    //     for (uint32 i = 0; i < receivedMessage.ArgumentCount(); i++)
+    //     {
+    //         if (receivedMessage.TypeTags()[i] != 'f')
+    //         {
+    //             LOGC("TrackingServer only support 'f' (floats), not '", String(receivedMessage.TypeTags()[i]));
+    //             return;
+    //         }
+    //     }
 
-        osc::ReceivedMessageArgumentStream args = receivedMessage.ArgumentStream();
+    //     osc::ReceivedMessageArgumentStream args = receivedMessage.ArgumentStream();
 
-        TrackingData trackingData;
+    //     TrackingData trackingData;
 
-        // Arguments:
-        args >> trackingData.position.x;      // 0 - x
-        args >> trackingData.position.y;      // 1 - y
-        args >> trackingData.position.width;  // 2 - box width
-        args >> trackingData.position.height; // 3 - box height
-        args >> osc::EndMessage;
+    //     // Arguments:
+    //     args >> trackingData.position.x;      // 0 - x
+    //     args >> trackingData.position.y;      // 1 - y
+    //     args >> trackingData.position.width;  // 2 - box width
+    //     args >> trackingData.position.height; // 3 - box height
+    //     args >> osc::EndMessage;
 
-        for (TrackingNode *processor : m_processors)
-        {
-            if (std::strcmp(receivedMessage.AddressPattern(), m_address.toStdString().c_str()) != 0)
-            {
-                continue;
-            }
-            // add trackingmodule to receive message call: processor->receiveMessage (m_incomingPort, m_address, trackingData);
-            processor->receiveMessage(std::stoi(m_incomingPort.toStdString()), m_address, trackingData);
-        }
-    }
-    catch (osc::Exception &e)
-    {
-        // any parsing errors such as unexpected argument types, or
-        // missing arguments get thrown as exceptions.
-        LOGC("error while parsing message: ", String(receivedMessage.AddressPattern()), ": ", String(e.what()));
-    }
+    //     for (TrackingNode *processor : m_processors)
+    //     {
+    //         if (std::strcmp(receivedMessage.AddressPattern(), m_address.toStdString().c_str()) != 0)
+    //         {
+    //             continue;
+    //         }
+    //         // add trackingmodule to receive message call: processor->receiveMessage (m_incomingPort, m_address, trackingData);
+    //         processor->receiveMessage(std::stoi(m_incomingPort.toStdString()), m_address, trackingData);
+    //     }
+    // }
+    // catch (osc::Exception &e)
+    // {
+    //     // any parsing errors such as unexpected argument types, or
+    //     // missing arguments get thrown as exceptions.
+    //     LOGC("error while parsing message: ", String(receivedMessage.AddressPattern()), ": ", String(e.what()));
+    // }
 }
 
 void TrackingServer::addProcessor(TrackingNode *processor)
@@ -496,20 +497,20 @@ void TrackingServer::removeProcessor(TrackingNode *processor)
 
 void TrackingServer::run()
 {
-    CoreServices::sendStatusMessage("Server sleeping!");
-    sleep(1000);
-    CoreServices::sendStatusMessage("Server running");
-    // Start the oscpack OSC Listener Thread
-    try
-    {
-        m_listeningSocket = new UdpListeningReceiveSocket(IpEndpointName("localhost", std::stoi(m_incomingPort.toStdString())), this);
-        sleep(1000);
-        m_listeningSocket->Run();
-    }
-    catch (const std::exception &e)
-    {
-        LOGC("Exception in TrackingServer::run(): ", String(e.what()));
-    }
+    // CoreServices::sendStatusMessage("Server sleeping!");
+    // sleep(1000);
+    // CoreServices::sendStatusMessage("Server running");
+    // // Start the oscpack OSC Listener Thread
+    // try
+    // {
+    //     m_listeningSocket = new UdpListeningReceiveSocket(IpEndpointName("localhost", std::stoi(m_incomingPort.toStdString())), this);
+    //     sleep(1000);
+    //     m_listeningSocket->Run();
+    // }
+    // catch (const std::exception &e)
+    // {
+    //     LOGC("Exception in TrackingServer::run(): ", String(e.what()));
+    // }
 }
 
 void TrackingServer::stop()

@@ -151,8 +151,8 @@ public:
 	TrackingModule(String port, String address, String color, TrackingNode *processor)
 		: m_port(port), m_address(address), m_color(color), m_messageQueue(std::make_unique<TrackingQueue>()), m_server(std::make_unique<TrackingServer>(port, address))
 	{
-		m_server->addProcessor(processor);
-		m_server->startThread();
+		// m_server->addProcessor(processor);
+		// m_server->startThread();
 	}
 	~TrackingModule() {}
 	friend std::ostream &operator<<(std::ostream &, const TrackingModule &);
@@ -225,7 +225,7 @@ public:
 	/** If the processor has a custom editor, this method must be defined to instantiate it. */
 	AudioProcessorEditor *createEditor() override;
 
-	void initialize();
+	void initialize(bool signalChainIsLoading) override;
 
 	void addTracker(String moduleName, String port="", String address="", String color="");
 
